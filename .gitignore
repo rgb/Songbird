@@ -14,3 +14,6 @@ ether/
 smew/
 *.epub
 *_feedback.md
+
+# Worktrees
+.worktrees/
