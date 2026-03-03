@@ -347,6 +347,29 @@ Compaction builds on snapshots (Phase 10) -- you need a snapshot before you can 
 
 ---
 
+## Phase 12: PostgreSQL Event Store & Position Store
+
+**Goal:** Production-grade PostgreSQL backend as an alternative to SQLite.
+
+### 12a: PostgresEventStore (in `SongbirdPostgres` module)
+- New module depending on `Songbird` + a PostgreSQL driver (e.g., `PostgresNIO`)
+- Same schema design as SQLiteEventStore (events table, indexes, hash chaining)
+- Full `EventStore` protocol conformance
+- Optimistic concurrency via `expectedVersion`
+- PostgreSQL-native features: advisory locks for stream-level concurrency, NOTIFY/LISTEN for push-based subscriptions (future)
+
+### 12b: PostgresPositionStore
+- `PositionStore` conformance using a `positions` table in the same database
+- UPSERT via `INSERT ... ON CONFLICT DO UPDATE`
+
+### 12c: Migration system
+- Version-tracked migrations (same pattern as SQLite)
+- PostgreSQL-specific DDL (e.g., `SERIAL` vs `AUTOINCREMENT`, `TEXT` vs `VARCHAR`)
+
+**Review checkpoint:** Run the full test suite against both SQLite and PostgreSQL backends. Verify behavioral equivalence.
+
+---
+
 ## Cross-Cutting: Testing Utilities (`SongbirdTesting` module)
 
 Built incrementally across phases:
