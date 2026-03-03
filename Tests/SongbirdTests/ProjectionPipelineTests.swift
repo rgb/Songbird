@@ -249,4 +249,107 @@ struct ProjectionPipelineTests {
         // Waiter should complete without throwing
         try await waiterTask.value
     }
+
+    // MARK: - Edge Cases
+
+    @Test func enqueueAfterStopIsIgnored() async throws {
+        let projector = RecordingProjector()
+        let pipeline = ProjectionPipeline()
+        await pipeline.register(projector)
+
+        let task = Task { await pipeline.run() }
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        try await pipeline.waitForIdle()
+        await pipeline.stop()
+        await task.value
+
+        // Enqueue after stop -- should be silently ignored
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        #expect(projector.appliedEvents.count == 1)
+    }
+
+    @Test func multipleWaitersAtDifferentPositions() async throws {
+        let pipeline = ProjectionPipeline()
+        await pipeline.register(RecordingProjector())
+        let task = Task { await pipeline.run() }
+
+        let waiter1 = Task {
+            try await pipeline.waitForProjection(upTo: 1)
+        }
+        let waiter2 = Task {
+            try await pipeline.waitForProjection(upTo: 3)
+        }
+
+        // Give waiters time to register
+        try await Task.sleep(for: .milliseconds(50))
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        try await waiter1.value // first waiter satisfied at position 1
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2))
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 3))
+        try await waiter2.value // second waiter satisfied at position 3
+
+        await pipeline.stop()
+        await task.value
+    }
+
+    @Test func waiterSatisfiedAtExactTargetPosition() async throws {
+        let pipeline = ProjectionPipeline()
+        await pipeline.register(RecordingProjector())
+        let task = Task { await pipeline.run() }
+
+        let waiterTask = Task {
+            try await pipeline.waitForProjection(upTo: 2)
+        }
+
+        try await Task.sleep(for: .milliseconds(50))
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2))
+
+        // Waiter should be satisfied at exactly position 2
+        try await waiterTask.value
+
+        let pos = await pipeline.currentPosition
+        #expect(pos >= 2)
+
+        await pipeline.stop()
+        await task.value
+    }
+
+    @Test func registerAfterRunReceivesSubsequentEvents() async throws {
+        let earlyProjector = RecordingProjector(id: "early")
+        let pipeline = ProjectionPipeline()
+        await pipeline.register(earlyProjector)
+        let task = Task { await pipeline.run() }
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        try await pipeline.waitForIdle()
+
+        // Register a late projector after run has started
+        let lateProjector = RecordingProjector(id: "late")
+        await pipeline.register(lateProjector)
+
+        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        try await pipeline.waitForIdle()
+
+        #expect(earlyProjector.appliedEvents.count == 2)
+        #expect(lateProjector.appliedEvents.count == 1) // only got the second event
+
+        await pipeline.stop()
+        await task.value
+    }
+
+    @Test func stopCalledTwiceIsIdempotent() async throws {
+        let pipeline = ProjectionPipeline()
+        let task = Task { await pipeline.run() }
+
+        await pipeline.stop()
+        await pipeline.stop() // second call should not crash
+        await task.value
+    }
 }

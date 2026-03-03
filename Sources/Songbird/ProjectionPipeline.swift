@@ -10,8 +10,14 @@ public actor ProjectionPipeline {
     private let continuation: AsyncStream<RecordedEvent>.Continuation
     private var projectedPosition: Int64 = -1
     private var enqueuedPosition: Int64 = -1
-    private var waiters: [UInt64: (position: Int64, continuation: CheckedContinuation<Void, any Error>)] = [:]
+    private var waiters: [UInt64: Waiter] = [:]
     private var nextWaiterId: UInt64 = 0
+
+    private struct Waiter {
+        let position: Int64
+        let continuation: CheckedContinuation<Void, any Error>
+        let timeoutTask: Task<Void, Never>
+    }
 
     public init() {
         let (stream, continuation) = AsyncStream<RecordedEvent>.makeStream()
@@ -63,12 +69,11 @@ public actor ProjectionPipeline {
         nextWaiterId += 1
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, any Error>) in
-            waiters[waiterId] = (position: globalPosition, continuation: cont)
-
-            Task {
+            let timeoutTask = Task {
                 try? await Task.sleep(for: timeout)
                 self.timeoutWaiter(id: waiterId)
             }
+            waiters[waiterId] = Waiter(position: globalPosition, continuation: cont, timeoutTask: timeoutTask)
         }
     }
 
@@ -87,12 +92,14 @@ public actor ProjectionPipeline {
         let satisfied = waiters.filter { $0.value.position <= projectedPosition }
         for (id, waiter) in satisfied {
             waiters.removeValue(forKey: id)
+            waiter.timeoutTask.cancel()
             waiter.continuation.resume()
         }
     }
 
     private func resumeAllWaiters() {
         for (_, waiter) in waiters {
+            waiter.timeoutTask.cancel()
             waiter.continuation.resume()
         }
         waiters.removeAll()
@@ -100,8 +107,9 @@ public actor ProjectionPipeline {
 
     private func timeoutWaiter(id: UInt64) {
         guard let waiter = waiters.removeValue(forKey: id) else {
-            return  // Already resumed
+            return // Already resumed
         }
+        // No need to cancel timeoutTask here -- it's the one calling us
         waiter.continuation.resume(throwing: ProjectionPipelineError.timeout)
     }
 }
