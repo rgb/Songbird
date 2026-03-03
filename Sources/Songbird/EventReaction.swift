@@ -89,7 +89,12 @@ extension EventReaction {
 ///
 /// The event is decoded twice (once in each phase), which is acceptable for correctness.
 /// A caching optimization could be added later if profiling shows this is a bottleneck.
-public struct AnyReaction<State: Sendable>: Sendable {
+///
+/// `@unchecked Sendable` is justified because the stored closures only call pure static
+/// methods on `EventReaction` conformances (which are stateless enum types). The closures
+/// capture a generic metatype `R.Type` which Swift 6.2 does not yet consider `Sendable`,
+/// but static method dispatch on value types is inherently thread-safe.
+public struct AnyReaction<State: Sendable>: @unchecked Sendable {
     /// The event type strings this reaction matches.
     public let eventTypes: [String]
     /// The categories this reaction subscribes to.
@@ -97,17 +102,17 @@ public struct AnyReaction<State: Sendable>: Sendable {
 
     /// Phase 1: Attempts to route the event. Returns the entity instance ID, or nil if
     /// the event type doesn't match or the reactor declines to handle it.
-    let tryRoute: @Sendable (RecordedEvent) throws -> String?
+    let tryRoute: (RecordedEvent) throws -> String?
 
     /// Phase 2: Given the current per-entity state and the recorded event, returns the
     /// new state and any output events to append.
-    let handle: @Sendable (State, RecordedEvent) throws -> (state: State, output: [any Event])
+    let handle: (State, RecordedEvent) throws -> (state: State, output: [any Event])
 
     public init(
         eventTypes: [String],
         categories: [String],
-        tryRoute: @escaping @Sendable (RecordedEvent) throws -> String?,
-        handle: @escaping @Sendable (State, RecordedEvent) throws -> (
+        tryRoute: @escaping (RecordedEvent) throws -> String?,
+        handle: @escaping (State, RecordedEvent) throws -> (
             state: State, output: [any Event]
         )
     ) {
