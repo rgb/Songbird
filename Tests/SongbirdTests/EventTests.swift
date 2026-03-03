@@ -66,6 +66,12 @@ struct EventMetadataTests {
         let decoded = try JSONDecoder().decode(EventMetadata.self, from: data)
         #expect(meta == decoded)
     }
+
+    @Test func equalityDiffersOnSingleField() {
+        let a = EventMetadata(traceId: "t1", userId: "u1")
+        let b = EventMetadata(traceId: "t1", userId: "u2")
+        #expect(a != b)
+    }
 }
 
 @Suite("RecordedEvent")
@@ -117,21 +123,52 @@ struct RecordedEventTests {
             _ = try recorded.decode(CounterDecremented.self)
         }
     }
+
+    @Test func decodeThrowsForCorruptedJSON() {
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "counter", id: "abc"),
+            position: 0,
+            globalPosition: 0,
+            eventType: CounterIncremented.eventType,
+            data: Data("not valid json".utf8),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+
+        #expect(throws: (any Error).self) {
+            _ = try recorded.decode(CounterIncremented.self)
+        }
+    }
 }
 
 @Suite("EventEnvelope")
 struct EventEnvelopeTests {
-    @Test func holdsTypedEvent() {
+    @Test func preservesAllFields() {
+        let id = UUID()
+        let stream = StreamName(category: "counter", id: "x")
+        let now = Date()
+        let meta = EventMetadata(traceId: "t1", userId: "u1")
         let event = CounterIncremented(amount: 7)
+
         let envelope = EventEnvelope(
-            id: UUID(),
-            streamName: StreamName(category: "counter", id: "x"),
-            position: 0,
-            globalPosition: 1,
+            id: id,
+            streamName: stream,
+            position: 3,
+            globalPosition: 42,
             event: event,
-            metadata: EventMetadata(),
-            timestamp: Date()
+            metadata: meta,
+            timestamp: now
         )
+
+        #expect(envelope.id == id)
+        #expect(envelope.streamName == stream)
+        #expect(envelope.position == 3)
+        #expect(envelope.globalPosition == 42)
+        #expect(envelope.event == event)
         #expect(envelope.event.amount == 7)
+        #expect(envelope.metadata.traceId == "t1")
+        #expect(envelope.metadata.userId == "u1")
+        #expect(envelope.timestamp == now)
     }
 }

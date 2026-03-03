@@ -57,4 +57,18 @@ struct StreamNameTests {
         let decoded = try JSONDecoder().decode(StreamName.self, from: data)
         #expect(stream == decoded)
     }
+
+    @Test func emptyStringsAreAllowed() {
+        let stream = StreamName(category: "", id: "")
+        #expect(stream.category == "")
+        #expect(stream.id == "")
+        #expect(stream.description == "-")
+        #expect(stream.isCategory == false)
+    }
+
+    @Test func emptyCategoryStream() {
+        let stream = StreamName(category: "")
+        #expect(stream.description == "")
+        #expect(stream.isCategory == true)
+    }
 }
