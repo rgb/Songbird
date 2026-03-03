@@ -11,6 +11,14 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 - Multi-module from day one (5 modules)
 - Method-based command handling (each command is its own type, handler is a typed closure)
 
+**Architectural model (Garofolo infrastructure + Hoffman type safety):**
+- `Message` protocol as the base for both `Event` and `Command`
+- The EventStore stores only **events** -- commands are ephemeral (sync path via `AggregateRepository.execute()`)
+- **Application layer** (sync): HTTP → command → execute → events → response
+- **Component layer** (async): Events → subscriptions → processing → more events
+- Process managers consume events and produce **reaction events** (not commands). Reaction events are stored in the event store. Other components subscribe and react.
+- All async processing is event-driven choreography. No command streams, no command storage.
+
 ---
 
 ## Phase 0: Project Scaffold & Initial Commit
@@ -225,43 +233,44 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 
 ---
 
-## Phase 6: Unified Message Model & Subscription Generalization
+## Phase 6: Message Hierarchy, Store Generalization & Reactive Streams
 
-**Goal:** Establish Garofolo's message-based architecture. Commands become storable messages. Generalize subscriptions to support entity streams, multi-category, and global reading.
+**Goal:** Introduce the `Message` base protocol, generalize store reads, expand subscriptions, and add reactive state streams.
 
-**Architectural shift:** The EventStore is a *message store*. Both events and commands are messages that flow through the same infrastructure. Commands are written to command streams (convention: `order:command` category). Components subscribe to streams and process messages. The typed protocols (Aggregate, CommandHandler, ProcessManager, Projector, Gateway) remain as domain modeling tools; the runtime follows Garofolo's subscription-based component model.
+### 6a: Message protocol hierarchy
+- `Message` protocol: `Sendable, Codable, Equatable` with `var messageType: String`
+- `Event: Message` with `var eventType: String` (default `messageType` implementation returns `eventType`)
+- `Command: Message` with `var commandType: String` (default `messageType` implementation returns `commandType`)
+- Command gains `Codable`, `Equatable`, instance `var commandType` (was `static var commandType`)
+- The EventStore stores only events -- commands remain ephemeral for the sync path
 
-### 6a: EventStore generalization
+### 6b: EventStore generalization
 - Replace `readCategory(_ category: String, ...)` with `readCategories(_ categories: [String], ...)`
-- Empty array = all messages (global stream), single = one category, multiple = multi-category
+- Empty array = all events (global stream), single = one category, multiple = multi-category
 - Convenience extensions: `readCategory` (single string), `readAll` (empty array)
 - Implement in InMemoryEventStore (Set-based filter) and SQLiteEventStore (WHERE IN clause, index-backed)
-
-### 6b: Command as storable message
-- `Command` protocol gains `Codable`, `Equatable`, instance `var commandType: String`
-- `EventStore` gains `appendCommand` convenience extension: serializes a command and stores it as a message. The `eventType` field in `RecordedEvent` stores the `commandType`.
-- Command stream convention: `StreamName(category: "order:command", id: "abc123")`
-- No schema change needed -- commands are messages in the same store
 
 ### 6c: Subscription generalization
 - Rename `CategorySubscription` → `EventSubscription` with `categories: [String]`
 - New `StreamSubscription` for entity-level (specific StreamName, no position persistence, for reactive streams)
 - Both are `AsyncSequence<RecordedEvent>`
 
-### 6d: Reactive state streams
+### 6d: Reactive aggregate state stream
 - `AggregateStateStream<A>` -- `AsyncSequence<A.State>` for a specific entity
   - Folds existing events, yields initial state, polls for new events, yields updated state
-- These enable WebSocket/gRPC push for real-time state observation
+  - Enables WebSocket/gRPC push for real-time state observation
 
-**Review checkpoint:** Test multi-category subscription, command stream write/read, aggregate state streaming with live updates.
+**Review checkpoint:** Test Message hierarchy, multi-category reads, subscription generalization, aggregate state streaming.
 
 ---
 
-## Phase 7: Component Runtime & Process Managers
+## Phase 7: Process Manager Runtime
 
-**Goal:** Implement the component model. All processing is subscription-based. Process managers are per-entity components that consume events and emit commands to command streams.
+**Goal:** Per-entity process managers that consume events and produce reaction events. Fully event-driven choreography.
 
 ### 7a: ProcessManager protocol update
+- `OutputCommand` → `OutputEvent: Event` (PMs produce events, not commands)
+- `commands()` → `react()` (produces reaction events: `PaymentRequested`, `ShipmentRequested`, etc.)
 - Add `categories: [String]` (which categories to watch)
 - Add `route(_ event: RecordedEvent) -> String?` (extract process instance ID, nil = irrelevant)
 - Add `decodeEvent(_ recorded: RecordedEvent) throws -> InputEvent`
@@ -270,19 +279,15 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 - Actor using `EventSubscription(categories: PM.categories)`
 - Routes events by entity ID via `PM.route`
 - Per-entity state: fold through `PM.apply`, cache in dictionary
-- Emits output commands by writing to command streams via `store.appendCommand`
+- Writes output events to the event store (reaction events that other components subscribe to)
 - Position-tracked via PositionStore
 
 ### 7c: ProcessStateStream
 - `AsyncSequence<PM.State>` for a specific process instance
 - Same pattern as AggregateStateStream but folds through PM.apply
+- Enables real-time observation of workflow progress
 
-### 7d: Command-handling components (async path)
-- Components that subscribe to command streams and process commands via aggregates
-- Complement to `AggregateRepository.execute()` (sync path)
-- Both paths produce the same events; the difference is sync vs. async dispatch
-
-**Review checkpoint:** Build order fulfillment process (reserve → pay → ship). Verify commands flow through command streams. Test reactive process state stream.
+**Review checkpoint:** Build order fulfillment process (OrderPlaced → PaymentRequested → PaymentCharged → ShipmentRequested → OrderShipped). Test reactive process state stream.
 
 ---
 
@@ -299,22 +304,20 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 - Request ID / trace ID middleware (sets EventMetadata.traceId from request)
 
 ### 8c: Route Helpers
-- Sync path: `appendAndProject()` -- append event → enqueue to pipeline → return
-- Async path: `dispatchCommand()` -- write command to command stream → return 202 Accepted
-- Response helpers for async-aware UI patterns
+- `appendAndProject()` -- append event → enqueue to pipeline → return
+- Response helpers for async-aware patterns (polling, 202 Accepted for long-running workflows)
 
-**Review checkpoint:** Build a minimal Hummingbird app. Test both sync (execute → event → project → query) and async (command stream → component → event) paths.
+**Review checkpoint:** Build a minimal Hummingbird app. Test HTTP → command → event → projection → query cycle.
 
 ---
 
 ## Phase 9: Gateway Pattern
 
-**Goal:** Clean boundary for external side effects. Gateways are components that subscribe to events/commands and perform outbound actions.
+**Goal:** Clean boundary for external side effects. Gateways are components that subscribe to events and perform outbound actions.
 
-### 9a: Gateway as component
-- Gateway protocol receives events via subscription (already defined)
-- Runs as a component via EventSubscription with position tracking
-- Must be idempotent
+### 9a: Gateway as subscription-based component
+- Gateway protocol receives events via EventSubscription with position tracking
+- Must be idempotent (at-least-once delivery)
 
 ### 9b: Notifier pattern
 - Outbound side effects: email, webhooks, API calls
