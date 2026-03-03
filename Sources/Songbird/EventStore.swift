@@ -12,8 +12,8 @@ public protocol EventStore: Sendable {
         maxCount: Int
     ) async throws -> [RecordedEvent]
 
-    func readCategory(
-        _ category: String,
+    func readCategories(
+        _ categories: [String],
         from globalPosition: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent]
@@ -25,6 +25,23 @@ public protocol EventStore: Sendable {
     func streamVersion(
         _ stream: StreamName
     ) async throws -> Int64
+}
+
+extension EventStore {
+    public func readCategory(
+        _ category: String,
+        from globalPosition: Int64,
+        maxCount: Int
+    ) async throws -> [RecordedEvent] {
+        try await readCategories([category], from: globalPosition, maxCount: maxCount)
+    }
+
+    public func readAll(
+        from globalPosition: Int64,
+        maxCount: Int
+    ) async throws -> [RecordedEvent] {
+        try await readCategories([], from: globalPosition, maxCount: maxCount)
+    }
 }
 
 public struct VersionConflictError: Error, CustomStringConvertible {

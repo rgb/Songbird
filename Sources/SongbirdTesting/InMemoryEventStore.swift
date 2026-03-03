@@ -61,14 +61,15 @@ public actor InMemoryEventStore: EventStore {
         )
     }
 
-    public func readCategory(
-        _ category: String,
+    public func readCategories(
+        _ categories: [String],
         from globalPosition: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
-        Array(
+        let categorySet = Set(categories)
+        return Array(
             events
-                .filter { $0.streamName.category == category && $0.globalPosition >= globalPosition }
+                .filter { $0.globalPosition >= globalPosition && (categorySet.isEmpty || categorySet.contains($0.streamName.category)) }
                 .prefix(maxCount)
         )
     }

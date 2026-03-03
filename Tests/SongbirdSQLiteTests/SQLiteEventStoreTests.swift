@@ -238,4 +238,69 @@ struct SQLiteEventStoreTests {
         #expect(result.eventsVerified == 1)
         #expect(result.brokenAtSequence == 2)
     }
+
+    // MARK: - Read Categories (Multi-Category)
+
+    @Test func readCategoriesWithMultipleCategories() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "invoice", id: "b")
+        let s3 = StreamName(category: "order", id: "c")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: s3, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readCategories(["account", "invoice"], from: 0, maxCount: 100)
+        #expect(events.count == 2)
+        #expect(events[0].streamName == s1)
+        #expect(events[1].streamName == s2)
+    }
+
+    @Test func readAllReturnsAllCategories() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "invoice", id: "b")
+        let s3 = StreamName(category: "order", id: "c")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: s3, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readAll(from: 0, maxCount: 100)
+        #expect(events.count == 3)
+    }
+
+    @Test func readAllFromGlobalPosition() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "invoice", id: "b")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readAll(from: 1, maxCount: 100)
+        #expect(events.count == 1)
+        #expect(events[0].globalPosition == 1)
+    }
+
+    @Test func readCategoriesWithEmptyArrayReturnsAllEvents() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "invoice", id: "b")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readCategories([], from: 0, maxCount: 100)
+        #expect(events.count == 2)
+    }
+
+    @Test func readCategoryConvenienceStillWorks() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "other", id: "b")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readCategory("account", from: 0, maxCount: 100)
+        #expect(events.count == 1)
+        #expect(events[0].streamName == s1)
+    }
 }

@@ -160,20 +160,41 @@ public actor SQLiteEventStore: EventStore {
         return try rows.map { row in try recordedEvent(from: row) }
     }
 
-    // MARK: - Read Category
+    // MARK: - Read Categories
 
-    public func readCategory(
-        _ category: String,
+    public func readCategories(
+        _ categories: [String],
         from globalPosition: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
-        let rows = try db.prepare("""
-            SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
-            FROM events
-            WHERE stream_category = ? AND (global_position - 1) >= ?
-            ORDER BY global_position ASC
-            LIMIT ?
-        """, category, globalPosition, maxCount)
+        let rows: Statement
+        if categories.isEmpty {
+            rows = try db.prepare("""
+                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                FROM events
+                WHERE (global_position - 1) >= ?
+                ORDER BY global_position ASC
+                LIMIT ?
+            """, globalPosition, maxCount)
+        } else if categories.count == 1 {
+            rows = try db.prepare("""
+                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                FROM events
+                WHERE stream_category = ? AND (global_position - 1) >= ?
+                ORDER BY global_position ASC
+                LIMIT ?
+            """, categories[0], globalPosition, maxCount)
+        } else {
+            let placeholders = categories.map { _ in "?" }.joined(separator: ", ")
+            let bindings: [Binding?] = categories.map { $0 as Binding? } + [globalPosition as Binding?, maxCount as Binding?]
+            rows = try db.prepare("""
+                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                FROM events
+                WHERE stream_category IN (\(placeholders)) AND (global_position - 1) >= ?
+                ORDER BY global_position ASC
+                LIMIT ?
+            """, bindings)
+        }
 
         return try rows.map { row in try recordedEvent(from: row) }
     }
