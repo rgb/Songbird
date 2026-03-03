@@ -3,9 +3,15 @@ import Foundation
 import Songbird
 import SQLite
 
+public enum SQLiteEventStoreError: Error {
+    case corruptedRow(column: String, globalPosition: Int64?)
+    case encodingFailed
+}
+
 public actor SQLiteEventStore: EventStore {
     nonisolated(unsafe) let db: Connection
     private let registry: EventTypeRegistry
+    private let iso8601Formatter = ISO8601DateFormatter()
 
     public init(path: String, registry: EventTypeRegistry) throws {
         if path == ":memory:" {
@@ -89,11 +95,15 @@ public actor SQLiteEventStore: EventStore {
         let position = currentVersion + 1
         let eventId = UUID()
         let now = Date()
-        let iso8601 = ISO8601DateFormatter().string(from: now)
+        let iso8601 = iso8601Formatter.string(from: now)
         let eventData = try JSONEncoder().encode(event)
-        let eventDataString = String(data: eventData, encoding: .utf8)!
+        guard let eventDataString = String(data: eventData, encoding: .utf8) else {
+            throw SQLiteEventStoreError.encodingFailed
+        }
         let metadataData = try JSONEncoder().encode(metadata)
-        let metadataString = String(data: metadataData, encoding: .utf8)!
+        guard let metadataString = String(data: metadataData, encoding: .utf8) else {
+            throw SQLiteEventStoreError.encodingFailed
+        }
         let eventType = type(of: event).eventType
 
         // Hash chain
@@ -234,6 +244,13 @@ public actor SQLiteEventStore: EventStore {
         return ChainVerificationResult(intact: true, eventsVerified: verified)
     }
 
+    // MARK: - Test Support
+
+    /// Execute raw SQL. Intended for test scenarios (e.g., corrupting data to test chain verification).
+    public func rawExecute(_ sql: String) throws {
+        try db.execute(sql)
+    }
+
     // MARK: - Private Helpers
 
     private func currentStreamVersion(_ streamName: String) throws -> Int64 {
@@ -254,22 +271,44 @@ public actor SQLiteEventStore: EventStore {
     }
 
     private func recordedEvent(from row: [Binding?]) throws -> RecordedEvent {
-        let autoincPos = row[0] as! Int64
+        guard let autoincPos = row[0] as? Int64 else {
+            throw SQLiteEventStoreError.corruptedRow(column: "global_position", globalPosition: nil)
+        }
         let globalPosition = autoincPos - 1  // 0-based
-        let streamStr = row[1] as! String
-        let category = row[2] as! String
-        let position = row[3] as! Int64
-        let eventType = row[4] as! String
-        let dataStr = row[5] as! String
-        let metadataStr = row[6] as! String
-        let eventIdStr = row[7] as! String
-        let timestampStr = row[8] as! String
+
+        guard let streamStr = row[1] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "stream_name", globalPosition: autoincPos)
+        }
+        guard let category = row[2] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "stream_category", globalPosition: autoincPos)
+        }
+        guard let position = row[3] as? Int64 else {
+            throw SQLiteEventStoreError.corruptedRow(column: "position", globalPosition: autoincPos)
+        }
+        guard let eventType = row[4] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: autoincPos)
+        }
+        guard let dataStr = row[5] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: autoincPos)
+        }
+        guard let metadataStr = row[6] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "metadata", globalPosition: autoincPos)
+        }
+        guard let eventIdStr = row[7] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
+        }
+        guard let timestampStr = row[8] as? String else {
+            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: autoincPos)
+        }
 
         let stream = StreamName(category: category, id: extractId(from: streamStr, category: category))
         let eventData = Data(dataStr.utf8)
         let metadata = try JSONDecoder().decode(EventMetadata.self, from: Data(metadataStr.utf8))
-        let eventId = UUID(uuidString: eventIdStr)!
-        let timestamp = ISO8601DateFormatter().date(from: timestampStr) ?? Date()
+
+        guard let eventId = UUID(uuidString: eventIdStr) else {
+            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
+        }
+        let timestamp = iso8601Formatter.date(from: timestampStr) ?? Date()
 
         return RecordedEvent(
             id: eventId,

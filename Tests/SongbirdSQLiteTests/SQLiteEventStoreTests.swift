@@ -221,4 +221,21 @@ struct SQLiteEventStoreTests {
         #expect(result.intact == true)
         #expect(result.eventsVerified == 0)
     }
+
+    @Test func tamperedEventBreaksChain() async throws {
+        let store = try makeStore()
+        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(Credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        // Tamper with the second event's data
+        try await store.rawExecute(
+            "UPDATE events SET data = '{\"amount\":999}' WHERE global_position = 2"
+        )
+
+        let result = try await store.verifyChain()
+        #expect(result.intact == false)
+        #expect(result.eventsVerified == 1)
+        #expect(result.brokenAtSequence == 2)
+    }
 }
