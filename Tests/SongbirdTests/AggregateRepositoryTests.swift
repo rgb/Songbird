@@ -226,4 +226,50 @@ struct AggregateRepositoryTests {
         let (state, _) = try await repo.load(id: "acct-1")
         #expect(state.balance == 100)
     }
+
+    // MARK: - Edge Cases
+
+    @Test func executeWithEmptyEventListAppendsNothing() async throws {
+        enum NoOpHandler: CommandHandler {
+            typealias Agg = BankAccountAggregate
+            typealias Cmd = Deposit
+
+            static func handle(
+                _ command: Deposit,
+                given state: BankAccountAggregate.State
+            ) throws(BankAccountAggregate.Failure) -> [BankAccountEvent] {
+                []
+            }
+        }
+
+        let (repo, store) = makeRepo()
+        _ = try await repo.execute(OpenAccount(name: "Fay"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
+        let recorded = try await repo.execute(Deposit(amount: 100), on: "acct-1", metadata: meta, using: NoOpHandler.self)
+        #expect(recorded.isEmpty)
+
+        let events = try await store.readStream(StreamName(category: "account", id: "acct-1"), from: 0, maxCount: 100)
+        #expect(events.count == 1) // only the open event
+    }
+
+    @Test func loadWithWrongRegistryThrowsUnexpectedEventType() async throws {
+        // Use a registry that maps "AccountOpened" to CounterAggregate.Event (wrong type)
+        let wrongRegistry = EventTypeRegistry()
+        wrongRegistry.register(CounterAggregate.Event.self, eventTypes: ["AccountOpened"])
+
+        // Use a single store -- append with the store, then load with the wrong registry
+        let store = InMemoryEventStore(registry: wrongRegistry)
+        _ = try await store.append(
+            BankAccountEvent.opened(name: "Test"),
+            to: StreamName(category: "account", id: "acct-1"),
+            metadata: meta,
+            expectedVersion: nil
+        )
+
+        // The repo uses wrongRegistry, which tries to decode BankAccountEvent JSON
+        // as CounterAggregate.Event -- fails with a DecodingError
+        let repo = AggregateRepository<BankAccountAggregate>(store: store, registry: wrongRegistry)
+        await #expect(throws: (any Error).self) {
+            _ = try await repo.load(id: "acct-1")
+        }
+    }
 }
