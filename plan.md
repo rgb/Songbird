@@ -225,60 +225,106 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 
 ---
 
-## Phase 6: Process Manager Runtime
+## Phase 6: Unified Message Model & Subscription Generalization
 
-**Goal:** Execute process managers that consume events and emit commands.
+**Goal:** Establish Garofolo's message-based architecture. Commands become storable messages. Generalize subscriptions to support entity streams, multi-category, and global reading.
 
-### 6a: ProcessManagerRunner
-- Loads process manager state from its own event stream (or a dedicated store)
-- Subscribes to input event category
-- On each event: apply to state, compute output commands, write commands to target streams
-- One instance per process flow (e.g., per order ID)
-- Position tracking like subscriptions
+**Architectural shift:** The EventStore is a *message store*. Both events and commands are messages that flow through the same infrastructure. Commands are written to command streams (convention: `order:command` category). Components subscribe to streams and process messages. The typed protocols (Aggregate, CommandHandler, ProcessManager, Projector, Gateway) remain as domain modeling tools; the runtime follows Garofolo's subscription-based component model.
 
-### 6b: ProcessManagerRepository
-- Similar to `AggregateRepository` but for process managers
-- Manages state loading, event application, command emission
+### 6a: EventStore generalization
+- Replace `readCategory(_ category: String, ...)` with `readCategories(_ categories: [String], ...)`
+- Empty array = all messages (global stream), single = one category, multiple = multi-category
+- Convenience extensions: `readCategory` (single string), `readAll` (empty array)
+- Implement in InMemoryEventStore (Set-based filter) and SQLiteEventStore (WHERE IN clause, index-backed)
 
-**Review checkpoint:** Build a simple multi-step process (e.g., order fulfillment: reserve -> pay -> ship). Test happy path and failure/compensation paths.
+### 6b: Command as storable message
+- `Command` protocol gains `Codable`, `Equatable`, instance `var commandType: String`
+- `EventStore` gains `appendCommand` convenience extension: serializes a command and stores it as a message. The `eventType` field in `RecordedEvent` stores the `commandType`.
+- Command stream convention: `StreamName(category: "order:command", id: "abc123")`
+- No schema change needed -- commands are messages in the same store
+
+### 6c: Subscription generalization
+- Rename `CategorySubscription` → `EventSubscription` with `categories: [String]`
+- New `StreamSubscription` for entity-level (specific StreamName, no position persistence, for reactive streams)
+- Both are `AsyncSequence<RecordedEvent>`
+
+### 6d: Reactive state streams
+- `AggregateStateStream<A>` -- `AsyncSequence<A.State>` for a specific entity
+  - Folds existing events, yields initial state, polls for new events, yields updated state
+- These enable WebSocket/gRPC push for real-time state observation
+
+**Review checkpoint:** Test multi-category subscription, command stream write/read, aggregate state streaming with live updates.
 
 ---
 
-## Phase 7: Hummingbird Integration
+## Phase 7: Component Runtime & Process Managers
+
+**Goal:** Implement the component model. All processing is subscription-based. Process managers are per-entity components that consume events and emit commands to command streams.
+
+### 7a: ProcessManager protocol update
+- Add `categories: [String]` (which categories to watch)
+- Add `route(_ event: RecordedEvent) -> String?` (extract process instance ID, nil = irrelevant)
+- Add `decodeEvent(_ recorded: RecordedEvent) throws -> InputEvent`
+
+### 7b: ProcessManagerRunner
+- Actor using `EventSubscription(categories: PM.categories)`
+- Routes events by entity ID via `PM.route`
+- Per-entity state: fold through `PM.apply`, cache in dictionary
+- Emits output commands by writing to command streams via `store.appendCommand`
+- Position-tracked via PositionStore
+
+### 7c: ProcessStateStream
+- `AsyncSequence<PM.State>` for a specific process instance
+- Same pattern as AggregateStateStream but folds through PM.apply
+
+### 7d: Command-handling components (async path)
+- Components that subscribe to command streams and process commands via aggregates
+- Complement to `AggregateRepository.execute()` (sync path)
+- Both paths produce the same events; the difference is sync vs. async dispatch
+
+**Review checkpoint:** Build order fulfillment process (reserve → pay → ship). Verify commands flow through command streams. Test reactive process state stream.
+
+---
+
+## Phase 8: Hummingbird Integration
 
 **Goal:** Make it natural to use Songbird in a Hummingbird web application.
 
-### 7a: SongbirdServices
-- `SongbirdServices` struct (Sendable): holds event store, projection pipeline, subscription runners
+### 8a: SongbirdServices
+- `SongbirdServices` struct (Sendable): holds event store, projection pipeline, subscriptions, position store
 - Injected into Hummingbird's request context
 
-### 7b: Middleware
-- `ProjectionFlushMiddleware` (from ether): ensures read-after-write consistency in tests/development
-- Request ID / trace ID middleware
+### 8b: Middleware
+- `ProjectionFlushMiddleware` (from ether): read-after-write consistency
+- Request ID / trace ID middleware (sets EventMetadata.traceId from request)
 
-### 7c: Route Helpers
-- `appendAndProject()` helper: append event -> enqueue to pipeline -> return
-- Response helpers for async-aware patterns (polling, 202 Accepted)
+### 8c: Route Helpers
+- Sync path: `appendAndProject()` -- append event → enqueue to pipeline → return
+- Async path: `dispatchCommand()` -- write command to command stream → return 202 Accepted
+- Response helpers for async-aware UI patterns
 
-**Review checkpoint:** Build a minimal Hummingbird app with Songbird. Test full HTTP request -> command -> event -> projection -> query cycle.
+**Review checkpoint:** Build a minimal Hummingbird app. Test both sync (execute → event → project → query) and async (command stream → component → event) paths.
 
 ---
 
-## Phase 8: Gateway Pattern
+## Phase 9: Gateway Pattern
 
-**Goal:** Clean boundary for external side effects.
+**Goal:** Clean boundary for external side effects. Gateways are components that subscribe to events/commands and perform outbound actions.
 
-### 8a: Notifier Protocol
-- `Notifier` protocol: receives events, performs outbound side effects
+### 9a: Gateway as component
+- Gateway protocol receives events via subscription (already defined)
+- Runs as a component via EventSubscription with position tracking
 - Must be idempotent
-- Runs as a subscription to event categories
-- Examples: email sending, webhook delivery, external API calls
 
-### 8b: Injector Protocol
-- `Injector` protocol: brings external events into the system
-- Examples: webhook receivers, IoT data ingestion, scheduled events
+### 9b: Notifier pattern
+- Outbound side effects: email, webhooks, API calls
+- Position-tracked so side effects are not repeated on restart
 
-**Review checkpoint:** Build a test notifier (e.g., mock email sender). Verify idempotent delivery.
+### 9c: Injector pattern
+- Inbound external events: webhook receivers, IoT data, scheduled events
+- Writes events to the store from external sources
+
+**Review checkpoint:** Build a test notifier. Verify idempotent delivery and position tracking.
 
 ---
 
