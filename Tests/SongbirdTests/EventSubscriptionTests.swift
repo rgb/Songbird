@@ -26,8 +26,8 @@ actor EventCollector {
     var count: Int { events.count }
 }
 
-@Suite("CategorySubscription")
-struct CategorySubscriptionTests {
+@Suite("EventSubscription")
+struct EventSubscriptionTests {
 
     let category = "order"
 
@@ -60,9 +60,9 @@ struct CategorySubscriptionTests {
         let (eventStore, positionStore) = makeStores()
         try await appendEvents(to: eventStore, category: category, count: 3)
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -115,9 +115,9 @@ struct CategorySubscriptionTests {
             expectedVersion: nil
         )
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: "order",
+            categories: ["order"],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -150,9 +150,9 @@ struct CategorySubscriptionTests {
         // Pre-set position to 2 (already processed through global position 2)
         try await positionStore.save(subscriberId: "test-sub", globalPosition: 2)
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -181,9 +181,9 @@ struct CategorySubscriptionTests {
         // Append 5 events with batch size 3
         try await appendEvents(to: eventStore, category: category, count: 5)
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 3,
@@ -227,9 +227,9 @@ struct CategorySubscriptionTests {
         // Append a few events so the subscription has something to start with
         try await appendEvents(to: eventStore, category: category, count: 2)
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -268,9 +268,9 @@ struct CategorySubscriptionTests {
     @Test func pollsForNewEvents() async throws {
         let (eventStore, positionStore) = makeStores()
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -301,9 +301,9 @@ struct CategorySubscriptionTests {
     @Test func handlesEmptyStore() async throws {
         let (eventStore, positionStore) = makeStores()
 
-        let subscription = CategorySubscription(
+        let subscription = EventSubscription(
             subscriberId: "test-sub",
-            category: category,
+            categories: [category],
             store: eventStore,
             positionStore: positionStore,
             batchSize: 100,
@@ -330,5 +330,80 @@ struct CategorySubscriptionTests {
         case .failure(let error):
             #expect(error is CancellationError)
         }
+    }
+
+    // MARK: - Multi-Category Subscription
+
+    @Test func subscribesToMultipleCategories() async throws {
+        let (eventStore, positionStore) = makeStores()
+
+        // Append events to different categories
+        let orderStream = StreamName(category: "order", id: "1")
+        let invoiceStream = StreamName(category: "invoice", id: "1")
+        let shipmentStream = StreamName(category: "shipment", id: "1")
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 1), to: orderStream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 2), to: invoiceStream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 3), to: shipmentStream, metadata: EventMetadata(), expectedVersion: nil)
+
+        let subscription = EventSubscription(
+            subscriberId: "test-sub",
+            categories: ["order", "invoice"],
+            store: eventStore,
+            positionStore: positionStore,
+            batchSize: 100,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = EventCollector()
+        let task = Task {
+            for try await event in subscription {
+                await collector.append(event)
+                if await collector.count == 2 { break }
+            }
+        }
+
+        try await task.value
+        let received = await collector.events
+        #expect(received.count == 2)
+        // Should get order and invoice, but not shipment
+        let categories = Set(received.map(\.streamName.category))
+        #expect(categories == ["order", "invoice"])
+    }
+
+    // MARK: - All-Events Subscription
+
+    @Test func subscribesToAllEventsWithEmptyCategories() async throws {
+        let (eventStore, positionStore) = makeStores()
+
+        // Append events to different categories
+        let orderStream = StreamName(category: "order", id: "1")
+        let invoiceStream = StreamName(category: "invoice", id: "1")
+        let shipmentStream = StreamName(category: "shipment", id: "1")
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 1), to: orderStream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 2), to: invoiceStream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await eventStore.append(SubscriptionTestEvent.occurred(value: 3), to: shipmentStream, metadata: EventMetadata(), expectedVersion: nil)
+
+        let subscription = EventSubscription(
+            subscriberId: "test-sub",
+            categories: [],
+            store: eventStore,
+            positionStore: positionStore,
+            batchSize: 100,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = EventCollector()
+        let task = Task {
+            for try await event in subscription {
+                await collector.append(event)
+                if await collector.count == 3 { break }
+            }
+        }
+
+        try await task.value
+        let received = await collector.events
+        #expect(received.count == 3)
+        let categories = Set(received.map(\.streamName.category))
+        #expect(categories == ["order", "invoice", "shipment"])
     }
 }

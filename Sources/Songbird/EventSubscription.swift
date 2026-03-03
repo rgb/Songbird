@@ -1,17 +1,36 @@
 import Foundation
 
-/// A polling-based subscription that reads events from a single category as an `AsyncSequence`.
+/// A polling-based subscription that reads events from one or more categories as an `AsyncSequence`.
 ///
-/// The subscription polls `EventStore.readCategory` in batches and yields events one at a time.
+/// The subscription polls `EventStore.readCategories` in batches and yields events one at a time.
 /// Position is persisted to a `PositionStore` after each batch is fully consumed, enabling
 /// restartability. When caught up (no new events), the subscription sleeps for `tickInterval`
 /// before polling again. The sequence ends when the enclosing `Task` is cancelled.
 ///
+/// When `categories` is empty, the subscription reads all events across all categories.
+///
 /// Usage:
 /// ```swift
-/// let subscription = CategorySubscription(
+/// // Single category
+/// let subscription = EventSubscription(
 ///     subscriberId: "order-projector",
-///     category: "order",
+///     categories: ["order"],
+///     store: eventStore,
+///     positionStore: positionStore
+/// )
+///
+/// // Multiple categories
+/// let subscription = EventSubscription(
+///     subscriberId: "cross-domain-projector",
+///     categories: ["order", "invoice"],
+///     store: eventStore,
+///     positionStore: positionStore
+/// )
+///
+/// // All events
+/// let subscription = EventSubscription(
+///     subscriberId: "audit-log",
+///     categories: [],
 ///     store: eventStore,
 ///     positionStore: positionStore
 /// )
@@ -25,11 +44,11 @@ import Foundation
 /// // Later: cancel stops the polling loop
 /// task.cancel()
 /// ```
-public struct CategorySubscription: AsyncSequence, Sendable {
+public struct EventSubscription: AsyncSequence, Sendable {
     public typealias Element = RecordedEvent
 
     public let subscriberId: String
-    public let category: String
+    public let categories: [String]
     public let store: any EventStore
     public let positionStore: any PositionStore
     public let batchSize: Int
@@ -37,14 +56,14 @@ public struct CategorySubscription: AsyncSequence, Sendable {
 
     public init(
         subscriberId: String,
-        category: String,
+        categories: [String],
         store: any EventStore,
         positionStore: any PositionStore,
         batchSize: Int = 100,
         tickInterval: Duration = .milliseconds(100)
     ) {
         self.subscriberId = subscriberId
-        self.category = category
+        self.categories = categories
         self.store = store
         self.positionStore = positionStore
         self.batchSize = batchSize
@@ -54,7 +73,7 @@ public struct CategorySubscription: AsyncSequence, Sendable {
     public func makeAsyncIterator() -> Iterator {
         Iterator(
             subscriberId: subscriberId,
-            category: category,
+            categories: categories,
             store: store,
             positionStore: positionStore,
             batchSize: batchSize,
@@ -64,7 +83,7 @@ public struct CategorySubscription: AsyncSequence, Sendable {
 
     public struct Iterator: AsyncIteratorProtocol {
         let subscriberId: String
-        let category: String
+        let categories: [String]
         let store: any EventStore
         let positionStore: any PositionStore
         let batchSize: Int
@@ -76,14 +95,14 @@ public struct CategorySubscription: AsyncSequence, Sendable {
 
         init(
             subscriberId: String,
-            category: String,
+            categories: [String],
             store: any EventStore,
             positionStore: any PositionStore,
             batchSize: Int,
             tickInterval: Duration
         ) {
             self.subscriberId = subscriberId
-            self.category = category
+            self.categories = categories
             self.store = store
             self.positionStore = positionStore
             self.batchSize = batchSize
@@ -118,8 +137,8 @@ public struct CategorySubscription: AsyncSequence, Sendable {
             while !Task.isCancelled {
                 try Task.checkCancellation()
 
-                let batch = try await store.readCategory(
-                    category,
+                let batch = try await store.readCategories(
+                    categories,
                     from: globalPosition + 1,
                     maxCount: batchSize
                 )
