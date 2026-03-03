@@ -33,12 +33,11 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         let stream = StreamName(category: A.category, id: id)
         var recorded: [RecordedEvent] = []
         for (index, event) in events.enumerated() {
-            let expectedVersion: Int64? = index == 0 ? version : nil
             let result = try await store.append(
                 event,
                 to: stream,
                 metadata: metadata,
-                expectedVersion: expectedVersion
+                expectedVersion: version + Int64(index)
             )
             recorded.append(result)
         }

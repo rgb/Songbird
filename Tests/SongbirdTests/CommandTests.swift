@@ -15,8 +15,7 @@ struct CommandTests {
 
     @Test func commandIsSendable() {
         let cmd = IncrementCounter(amount: 5)
-        Task { @Sendable in
-            _ = cmd.amount
-        }
+        let closure: @Sendable () -> Void = { _ = cmd.amount }
+        _ = closure
     }
 }

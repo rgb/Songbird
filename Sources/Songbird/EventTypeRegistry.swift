@@ -4,6 +4,10 @@ public enum EventTypeRegistryError: Error {
     case unregisteredEventType(String)
 }
 
+/// `@unchecked Sendable` is justified because all mutable state (`decoders`) is protected
+/// by an `NSLock`. Every read and write acquires the lock first, ensuring thread-safe access
+/// from any isolation domain. The class is `final` to prevent subclasses from breaking this
+/// invariant.
 public final class EventTypeRegistry: @unchecked Sendable {
     private let lock = NSLock()
     private var decoders: [String: @Sendable (Data) throws -> any Event] = [:]

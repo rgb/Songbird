@@ -5,7 +5,7 @@ import Testing
 @testable import SongbirdTesting
 
 // Test projector that records applied events
-final class RecordingProjector: Projector, @unchecked Sendable {
+actor RecordingProjector: Projector {
     let projectorId: String
     private(set) var appliedEvents: [RecordedEvent] = []
 
@@ -19,7 +19,7 @@ final class RecordingProjector: Projector, @unchecked Sendable {
 }
 
 // Test projector that only handles specific event types
-final class FilteringProjector: Projector, @unchecked Sendable {
+actor FilteringProjector: Projector {
     let projectorId = "filtering"
     let acceptedTypes: Set<String>
     private(set) var appliedEvents: [RecordedEvent] = []
@@ -36,7 +36,7 @@ final class FilteringProjector: Projector, @unchecked Sendable {
 }
 
 // Test projector that throws on specific events
-final class FailingProjector: Projector, @unchecked Sendable {
+actor FailingProjector: Projector {
     let projectorId = "failing"
     let failOnType: String
     private(set) var appliedEvents: [RecordedEvent] = []
@@ -91,7 +91,8 @@ struct ProjectionPipelineTests {
         await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
         try await pipeline.waitForIdle()
 
-        #expect(projector.appliedEvents.count == 2)
+        let appliedCount = await projector.appliedEvents.count
+        #expect(appliedCount == 2)
 
         await pipeline.stop()
         await task.value
@@ -109,8 +110,10 @@ struct ProjectionPipelineTests {
         await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
         try await pipeline.waitForIdle()
 
-        #expect(p1.appliedEvents.count == 1)
-        #expect(p2.appliedEvents.count == 1)
+        let p1Count = await p1.appliedEvents.count
+        let p2Count = await p2.appliedEvents.count
+        #expect(p1Count == 1)
+        #expect(p2Count == 1)
 
         await pipeline.stop()
         await task.value
@@ -130,8 +133,10 @@ struct ProjectionPipelineTests {
         await pipeline.enqueue(makeRecordedEvent(globalPosition: 2, eventType: "Deposited"))
         try await pipeline.waitForIdle()
 
-        #expect(allEvents.appliedEvents.count == 3)
-        #expect(onlyDeposits.appliedEvents.count == 2)
+        let allCount = await allEvents.appliedEvents.count
+        let depositsCount = await onlyDeposits.appliedEvents.count
+        #expect(allCount == 3)
+        #expect(depositsCount == 2)
 
         await pipeline.stop()
         await task.value
@@ -154,9 +159,11 @@ struct ProjectionPipelineTests {
         try await pipeline.waitForIdle()
 
         // Recording projector got all 3 events despite failing projector throwing on "Bad"
-        #expect(recording.appliedEvents.count == 3)
+        let recordingCount = await recording.appliedEvents.count
+        #expect(recordingCount == 3)
         // Failing projector got the 2 "Good" events
-        #expect(failing.appliedEvents.count == 2)
+        let failingCount = await failing.appliedEvents.count
+        #expect(failingCount == 2)
 
         await pipeline.stop()
         await task.value
@@ -266,7 +273,8 @@ struct ProjectionPipelineTests {
 
         // Enqueue after stop -- should be silently ignored
         await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
-        #expect(projector.appliedEvents.count == 1)
+        let count = await projector.appliedEvents.count
+        #expect(count == 1)
     }
 
     @Test func multipleWaitersAtDifferentPositions() async throws {
@@ -337,8 +345,10 @@ struct ProjectionPipelineTests {
         await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
         try await pipeline.waitForIdle()
 
-        #expect(earlyProjector.appliedEvents.count == 2)
-        #expect(lateProjector.appliedEvents.count == 1) // only got the second event
+        let earlyCount = await earlyProjector.appliedEvents.count
+        let lateCount = await lateProjector.appliedEvents.count
+        #expect(earlyCount == 2)
+        #expect(lateCount == 1) // only got the second event
 
         await pipeline.stop()
         await task.value

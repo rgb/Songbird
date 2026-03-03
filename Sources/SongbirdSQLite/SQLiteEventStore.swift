@@ -1,4 +1,5 @@
 import CryptoKit
+import Dispatch
 import Foundation
 import Songbird
 import SQLite
@@ -9,11 +10,20 @@ public enum SQLiteEventStoreError: Error {
 }
 
 public actor SQLiteEventStore: EventStore {
+    /// The underlying SQLite connection. Marked `nonisolated(unsafe)` because all access
+    /// is serialized through this actor's custom `DispatchSerialQueue` executor, ensuring
+    /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
     private let registry: EventTypeRegistry
     private let iso8601Formatter = ISO8601DateFormatter()
+    private let executor: DispatchSerialQueue
+
+    public nonisolated var unownedExecutor: UnownedSerialExecutor {
+        executor.asUnownedSerialExecutor()
+    }
 
     public init(path: String, registry: EventTypeRegistry) throws {
+        self.executor = DispatchSerialQueue(label: "songbird.sqlite-event-store")
         if path == ":memory:" {
             self.db = try Connection(.inMemory)
         } else {
@@ -197,7 +207,7 @@ public actor SQLiteEventStore: EventStore {
 
     // MARK: - Chain Verification
 
-    public func verifyChain(batchSize: Int = 1000) throws -> ChainVerificationResult {
+    public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
         var previousHash = "genesis"
         var verified = 0
         var offset = 0
@@ -239,6 +249,10 @@ public actor SQLiteEventStore: EventStore {
 
             if batchCount < batchSize { break }
             offset += batchSize
+
+            // Yield between batches to avoid monopolizing the executor during
+            // long chain verifications.
+            await Task.yield()
         }
 
         return ChainVerificationResult(intact: true, eventsVerified: verified)

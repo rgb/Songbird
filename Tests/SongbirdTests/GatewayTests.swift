@@ -3,7 +3,7 @@ import Testing
 
 @testable import Songbird
 
-final class TestNotifier: Gateway, @unchecked Sendable {
+actor TestNotifier: Gateway {
     let gatewayId = "test-notifier"
     private(set) var handledEvents: [RecordedEvent] = []
 
@@ -32,6 +32,7 @@ struct GatewayTests {
             timestamp: Date()
         )
         try await gateway.handle(recorded)
-        #expect(gateway.handledEvents.count == 1)
+        let count = await gateway.handledEvents.count
+        #expect(count == 1)
     }
 }

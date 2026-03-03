@@ -3,7 +3,7 @@ import Testing
 
 @testable import Songbird
 
-final class EventCounterProjector: Projector, @unchecked Sendable {
+actor EventCounterProjector: Projector {
     let projectorId = "event-counter"
     private(set) var count = 0
 
@@ -33,6 +33,7 @@ struct ProjectorTests {
         )
         try await projector.apply(recorded)
         try await projector.apply(recorded)
-        #expect(projector.count == 2)
+        let count = await projector.count
+        #expect(count == 2)
     }
 }

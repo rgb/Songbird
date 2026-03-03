@@ -10,8 +10,14 @@ public actor ProjectionPipeline {
     private let continuation: AsyncStream<RecordedEvent>.Continuation
     private var projectedPosition: Int64 = -1
     private var enqueuedPosition: Int64 = -1
-    private var waiters: [UInt64: Waiter] = [:]
     private var nextWaiterId: UInt64 = 0
+
+    /// Waiters are keyed by a monotonically increasing ID. All mutations to this dictionary
+    /// happen on the actor's serial executor, which guarantees that waiter registration,
+    /// resumption (via `resumeWaiters`/`resumeAllWaiters`), timeout, and cancellation are
+    /// fully serialized. A continuation is resumed exactly once because the first path to
+    /// reach it removes the entry from the dictionary, and subsequent paths find it absent.
+    private var waiters: [UInt64: Waiter] = [:]
 
     private struct Waiter {
         let position: Int64
@@ -19,6 +25,13 @@ public actor ProjectionPipeline {
         let timeoutTask: Task<Void, Never>
     }
 
+    /// Creates a new projection pipeline.
+    ///
+    /// Note: The internal `AsyncStream` uses an unbounded buffer policy (the default for
+    /// `makeStream()`). In practice this is acceptable because the pipeline is fed from a
+    /// single event store whose append rate is bounded by database I/O. If back-pressure
+    /// becomes a concern, consider switching to a bounded buffer with `.bufferingNewest`
+    /// or `.bufferingOldest`.
     public init() {
         let (stream, continuation) = AsyncStream<RecordedEvent>.makeStream()
         self.stream = stream
@@ -63,17 +76,23 @@ public actor ProjectionPipeline {
     // MARK: - Waiting
 
     public func waitForProjection(upTo globalPosition: Int64, timeout: Duration = .seconds(5)) async throws {
+        try Task.checkCancellation()
+
         if projectedPosition >= globalPosition { return }
 
         let waiterId = nextWaiterId
         nextWaiterId += 1
 
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, any Error>) in
-            let timeoutTask = Task {
-                try? await Task.sleep(for: timeout)
-                self.timeoutWaiter(id: waiterId)
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, any Error>) in
+                let timeoutTask = Task {
+                    try? await Task.sleep(for: timeout)
+                    self.timeoutWaiter(id: waiterId)
+                }
+                waiters[waiterId] = Waiter(position: globalPosition, continuation: cont, timeoutTask: timeoutTask)
             }
-            waiters[waiterId] = Waiter(position: globalPosition, continuation: cont, timeoutTask: timeoutTask)
+        } onCancel: {
+            Task { await self.cancelWaiter(id: waiterId) }
         }
     }
 
@@ -103,6 +122,14 @@ public actor ProjectionPipeline {
             waiter.continuation.resume()
         }
         waiters.removeAll()
+    }
+
+    private func cancelWaiter(id: UInt64) {
+        guard let waiter = waiters.removeValue(forKey: id) else {
+            return // Already resumed by projection, timeout, or stop
+        }
+        waiter.timeoutTask.cancel()
+        waiter.continuation.resume(throwing: CancellationError())
     }
 
     private func timeoutWaiter(id: UInt64) {
