@@ -323,6 +323,30 @@ The guiding philosophy: **leverage Swift's type system to make incorrect usage i
 
 ---
 
+## Phase 11: Compaction
+
+**Goal:** Manage storage growth by archiving old events and maintaining chain continuity.
+
+Compaction builds on snapshots (Phase 10) -- you need a snapshot before you can safely delete old events, since aggregate loading must still work.
+
+### 11a: Archive Service
+- Archive old events to a separate SQLite database file
+- Configurable cutoff (by date or by sequence number)
+- Copy events to archive, then delete from live store
+
+### 11b: Chain Boundary
+- Record the last hash before deletion in a `compaction_boundaries` table
+- `compactionStartingHash()` returns the boundary hash instead of `"genesis"` after compaction
+- Chain verification starts from the boundary, not from genesis
+
+### 11c: Projection Rebuild Safety
+- Ensure projections can still be rebuilt from remaining events + snapshots
+- Compaction must not delete events that projections haven't processed yet
+
+**Review checkpoint:** Archive events, verify chain still verifies from boundary, verify projections rebuild correctly from post-compaction state.
+
+---
+
 ## Cross-Cutting: Testing Utilities (`SongbirdTesting` module)
 
 Built incrementally across phases:
