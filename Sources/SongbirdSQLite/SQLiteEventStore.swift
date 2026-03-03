@@ -104,7 +104,7 @@ public actor SQLiteEventStore: EventStore {
         guard let metadataString = String(data: metadataData, encoding: .utf8) else {
             throw SQLiteEventStoreError.encodingFailed
         }
-        let eventType = type(of: event).eventType
+        let eventType = event.eventType
 
         // Hash chain
         let previousHash = try lastEventHash() ?? "genesis"

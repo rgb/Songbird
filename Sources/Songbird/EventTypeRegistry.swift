@@ -10,11 +10,13 @@ public final class EventTypeRegistry: @unchecked Sendable {
 
     public init() {}
 
-    public func register<E: Event>(_ type: E.Type) {
+    public func register<E: Event>(_ type: E.Type, eventTypes: [String]) {
         lock.lock()
         defer { lock.unlock() }
-        decoders[E.eventType] = { data in
-            try JSONDecoder().decode(E.self, from: data)
+        for eventType in eventTypes {
+            decoders[eventType] = { data in
+                try JSONDecoder().decode(E.self, from: data)
+            }
         }
     }
 

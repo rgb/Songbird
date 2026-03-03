@@ -3,51 +3,52 @@ import Testing
 
 @testable import Songbird
 
-struct TestDeposited: Event {
-    static let eventType = "TestDeposited"
-    let amount: Int
-}
+enum AccountEvent: Event {
+    case deposited(amount: Int)
+    case withdrawn(amount: Int, reason: String)
 
-struct TestWithdrawn: Event {
-    static let eventType = "TestWithdrawn"
-    let amount: Int
-    let reason: String
+    var eventType: String {
+        switch self {
+        case .deposited: "Deposited"
+        case .withdrawn: "Withdrawn"
+        }
+    }
 }
 
 @Suite("EventTypeRegistry")
 struct EventTypeRegistryTests {
     @Test func registerAndDecode() throws {
         let registry = EventTypeRegistry()
-        registry.register(TestDeposited.self)
+        registry.register(AccountEvent.self, eventTypes: ["Deposited", "Withdrawn"])
 
-        let event = TestDeposited(amount: 100)
+        let event = AccountEvent.deposited(amount: 100)
         let data = try JSONEncoder().encode(event)
         let recorded = RecordedEvent(
             id: UUID(),
             streamName: StreamName(category: "account", id: "1"),
             position: 0,
             globalPosition: 0,
-            eventType: TestDeposited.eventType,
+            eventType: "Deposited",
             data: data,
             metadata: EventMetadata(),
             timestamp: Date()
         )
 
         let decoded = try registry.decode(recorded)
-        let typed = decoded as! TestDeposited
-        #expect(typed.amount == 100)
+        let typed = decoded as! AccountEvent
+        #expect(typed == .deposited(amount: 100))
     }
 
     @Test func decodeUnregisteredTypeThrows() throws {
         let registry = EventTypeRegistry()
 
-        let data = try JSONEncoder().encode(TestDeposited(amount: 50))
+        let data = try JSONEncoder().encode(AccountEvent.deposited(amount: 50))
         let recorded = RecordedEvent(
             id: UUID(),
             streamName: StreamName(category: "account", id: "1"),
             position: 0,
             globalPosition: 0,
-            eventType: TestDeposited.eventType,
+            eventType: "Deposited",
             data: data,
             metadata: EventMetadata(),
             timestamp: Date()
@@ -60,18 +61,17 @@ struct EventTypeRegistryTests {
 
     @Test func registerMultipleTypes() throws {
         let registry = EventTypeRegistry()
-        registry.register(TestDeposited.self)
-        registry.register(TestWithdrawn.self)
+        registry.register(AccountEvent.self, eventTypes: ["Deposited", "Withdrawn"])
 
-        let depositData = try JSONEncoder().encode(TestDeposited(amount: 100))
-        let withdrawData = try JSONEncoder().encode(TestWithdrawn(amount: 50, reason: "ATM"))
+        let depositData = try JSONEncoder().encode(AccountEvent.deposited(amount: 100))
+        let withdrawData = try JSONEncoder().encode(AccountEvent.withdrawn(amount: 50, reason: "ATM"))
 
         let depositRecorded = RecordedEvent(
             id: UUID(),
             streamName: StreamName(category: "account", id: "1"),
             position: 0,
             globalPosition: 0,
-            eventType: TestDeposited.eventType,
+            eventType: "Deposited",
             data: depositData,
             metadata: EventMetadata(),
             timestamp: Date()
@@ -82,16 +82,15 @@ struct EventTypeRegistryTests {
             streamName: StreamName(category: "account", id: "1"),
             position: 1,
             globalPosition: 1,
-            eventType: TestWithdrawn.eventType,
+            eventType: "Withdrawn",
             data: withdrawData,
             metadata: EventMetadata(),
             timestamp: Date()
         )
 
-        let d = try registry.decode(depositRecorded) as! TestDeposited
-        let w = try registry.decode(withdrawRecorded) as! TestWithdrawn
-        #expect(d.amount == 100)
-        #expect(w.amount == 50)
-        #expect(w.reason == "ATM")
+        let d = try registry.decode(depositRecorded) as! AccountEvent
+        let w = try registry.decode(withdrawRecorded) as! AccountEvent
+        #expect(d == .deposited(amount: 100))
+        #expect(w == .withdrawn(amount: 50, reason: "ATM"))
     }
 }

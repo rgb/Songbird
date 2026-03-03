@@ -43,7 +43,7 @@ let package = Package(
 
         .testTarget(
             name: "SongbirdTests",
-            dependencies: ["Songbird"]
+            dependencies: ["Songbird", "SongbirdTesting"]
         ),
 
         .testTarget(

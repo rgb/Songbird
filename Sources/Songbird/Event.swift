@@ -1,7 +1,7 @@
 import Foundation
 
 public protocol Event: Sendable, Codable, Equatable {
-    static var eventType: String { get }
+    var eventType: String { get }
 }
 
 public struct EventMetadata: Sendable, Codable, Equatable {

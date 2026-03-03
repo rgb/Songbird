@@ -5,23 +5,23 @@ import Testing
 @testable import SongbirdSQLite
 @testable import SongbirdTesting
 
-struct Credited: Event {
-    static let eventType = "Credited"
-    let amount: Int
-}
+enum AccountEvent: Event {
+    case credited(amount: Int)
+    case debited(amount: Int, note: String)
 
-struct Debited: Event {
-    static let eventType = "Debited"
-    let amount: Int
-    let note: String
+    var eventType: String {
+        switch self {
+        case .credited: "Credited"
+        case .debited: "Debited"
+        }
+    }
 }
 
 @Suite("SQLiteEventStore")
 struct SQLiteEventStoreTests {
     func makeStore() throws -> SQLiteEventStore {
         let registry = EventTypeRegistry()
-        registry.register(Credited.self)
-        registry.register(Debited.self)
+        registry.register(AccountEvent.self, eventTypes: ["Credited", "Debited"])
         return try SQLiteEventStore(path: ":memory:", registry: registry)
     }
 
@@ -32,7 +32,7 @@ struct SQLiteEventStoreTests {
     @Test func appendReturnsRecordedEvent() async throws {
         let store = try makeStore()
         let recorded = try await store.append(
-            Credited(amount: 100),
+            AccountEvent.credited(amount: 100),
             to: stream,
             metadata: EventMetadata(traceId: "t1"),
             expectedVersion: nil
@@ -46,8 +46,8 @@ struct SQLiteEventStoreTests {
 
     @Test func appendIncrementsPositions() async throws {
         let store = try makeStore()
-        let r1 = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        let r2 = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        let r1 = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        let r2 = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
         #expect(r1.position == 0)
         #expect(r1.globalPosition == 0)
         #expect(r2.position == 1)
@@ -58,8 +58,8 @@ struct SQLiteEventStoreTests {
         let store = try makeStore()
         let s1 = StreamName(category: "account", id: "a")
         let s2 = StreamName(category: "account", id: "b")
-        let r1 = try await store.append(Credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
-        let r2 = try await store.append(Credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        let r1 = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        let r2 = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
         #expect(r1.position == 0)
         #expect(r2.position == 0)
         #expect(r1.globalPosition == 0)
@@ -68,33 +68,33 @@ struct SQLiteEventStoreTests {
 
     @Test func appendedDataIsDecodable() async throws {
         let store = try makeStore()
-        let recorded = try await store.append(Credited(amount: 42), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        let envelope = try recorded.decode(Credited.self)
-        #expect(envelope.event.amount == 42)
+        let recorded = try await store.append(AccountEvent.credited(amount: 42), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        let envelope = try recorded.decode(AccountEvent.self)
+        #expect(envelope.event == .credited(amount: 42))
     }
 
     // MARK: - Optimistic Concurrency
 
     @Test func appendWithCorrectExpectedVersion() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        let r2 = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: 0)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        let r2 = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: 0)
         #expect(r2.position == 1)
     }
 
     @Test func appendWithWrongExpectedVersionThrows() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         await #expect(throws: VersionConflictError.self) {
-            _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: 5)
+            _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: 5)
         }
     }
 
     @Test func appendWithExpectedVersionOnEmptyStreamThrows() async throws {
         let store = try makeStore()
         await #expect(throws: VersionConflictError.self) {
-            _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: 0)
+            _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: 0)
         }
     }
 
@@ -102,9 +102,9 @@ struct SQLiteEventStoreTests {
 
     @Test func readStreamReturnsEventsInOrder() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Debited(amount: 50, note: "ATM"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.debited(amount: 50, note: "ATM"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         let events = try await store.readStream(stream, from: 0, maxCount: 100)
         #expect(events.count == 3)
@@ -117,9 +117,9 @@ struct SQLiteEventStoreTests {
 
     @Test func readStreamFromPosition() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         let events = try await store.readStream(stream, from: 1, maxCount: 100)
         #expect(events.count == 2)
@@ -129,7 +129,7 @@ struct SQLiteEventStoreTests {
     @Test func readStreamWithMaxCount() async throws {
         let store = try makeStore()
         for i in 0..<10 {
-            _ = try await store.append(Credited(amount: i), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+            _ = try await store.append(AccountEvent.credited(amount: i), to: stream, metadata: EventMetadata(), expectedVersion: nil)
         }
         let events = try await store.readStream(stream, from: 0, maxCount: 3)
         #expect(events.count == 3)
@@ -148,9 +148,9 @@ struct SQLiteEventStoreTests {
         let s1 = StreamName(category: "account", id: "a")
         let s2 = StreamName(category: "account", id: "b")
         let s3 = StreamName(category: "other", id: "c")
-        _ = try await store.append(Credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 300), to: s3, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: s3, metadata: EventMetadata(), expectedVersion: nil)
 
         let events = try await store.readCategory("account", from: 0, maxCount: 100)
         #expect(events.count == 2)
@@ -160,8 +160,8 @@ struct SQLiteEventStoreTests {
         let store = try makeStore()
         let s1 = StreamName(category: "account", id: "a")
         let s2 = StreamName(category: "account", id: "b")
-        _ = try await store.append(Credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
 
         let events = try await store.readCategory("account", from: 1, maxCount: 100)
         #expect(events.count == 1)
@@ -172,8 +172,8 @@ struct SQLiteEventStoreTests {
 
     @Test func readLastEvent() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         let last = try await store.readLastEvent(in: stream)
         #expect(last != nil)
@@ -188,8 +188,8 @@ struct SQLiteEventStoreTests {
 
     @Test func streamVersionReturnsLatestPosition() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         let version = try await store.streamVersion(stream)
         #expect(version == 1)
@@ -205,9 +205,9 @@ struct SQLiteEventStoreTests {
 
     @Test func hashChainIsIntactAfterAppends() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Debited(amount: 50, note: "fee"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.debited(amount: 50, note: "fee"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         let result = try await store.verifyChain()
         #expect(result.intact == true)
@@ -224,9 +224,9 @@ struct SQLiteEventStoreTests {
 
     @Test func tamperedEventBreaksChain() async throws {
         let store = try makeStore()
-        _ = try await store.append(Credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
-        _ = try await store.append(Credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
         // Tamper with the second event's data
         try await store.rawExecute(

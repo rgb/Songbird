@@ -36,7 +36,7 @@ public actor InMemoryEventStore: EventStore {
             streamName: stream,
             position: position,
             globalPosition: globalPosition,
-            eventType: type(of: event).eventType,
+            eventType: event.eventType,
             data: data,
             metadata: metadata,
             timestamp: Date()

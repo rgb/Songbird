@@ -2,9 +2,14 @@ import Testing
 
 @testable import Songbird
 
-struct ItemReserved: Event {
-    static let eventType = "ItemReserved"
-    let orderId: String
+enum OrderEvent: Event {
+    case itemReserved(orderId: String)
+
+    var eventType: String {
+        switch self {
+        case .itemReserved: "ItemReserved"
+        }
+    }
 }
 
 struct ChargePayment: Command {
@@ -18,18 +23,23 @@ enum FulfillmentProcess: ProcessManager {
         var reserved: Bool
     }
 
-    typealias InputEvent = ItemReserved
+    typealias InputEvent = OrderEvent
     typealias OutputCommand = ChargePayment
 
     static let processId = "fulfillment"
     static let initialState = State(reserved: false)
 
-    static func apply(_ state: State, _ event: ItemReserved) -> State {
-        State(reserved: true)
+    static func apply(_ state: State, _ event: OrderEvent) -> State {
+        switch event {
+        case .itemReserved: State(reserved: true)
+        }
     }
 
-    static func commands(_ state: State, _ event: ItemReserved) -> [ChargePayment] {
-        [ChargePayment(orderId: event.orderId, amount: 100)]
+    static func commands(_ state: State, _ event: OrderEvent) -> [ChargePayment] {
+        switch event {
+        case .itemReserved(let orderId):
+            [ChargePayment(orderId: orderId, amount: 100)]
+        }
     }
 }
 
@@ -42,7 +52,7 @@ struct ProcessManagerTests {
     @Test func applyUpdatesState() {
         let state = FulfillmentProcess.apply(
             FulfillmentProcess.initialState,
-            ItemReserved(orderId: "o1")
+            .itemReserved(orderId: "o1")
         )
         #expect(state.reserved == true)
     }
@@ -50,7 +60,7 @@ struct ProcessManagerTests {
     @Test func commandsProducesOutput() {
         let commands = FulfillmentProcess.commands(
             FulfillmentProcess.initialState,
-            ItemReserved(orderId: "o1")
+            .itemReserved(orderId: "o1")
         )
         #expect(commands.count == 1)
         #expect(commands[0].orderId == "o1")

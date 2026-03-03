@@ -7,11 +7,16 @@ enum CounterAggregate: Aggregate {
         var count: Int
     }
 
-    enum Event: String, Songbird.Event, CaseIterable {
-        case incremented = "CounterIncremented"
-        case decremented = "CounterDecremented"
+    enum Event: Songbird.Event {
+        case incremented
+        case decremented
 
-        static var eventType: String { "CounterEvent" }
+        var eventType: String {
+            switch self {
+            case .incremented: "CounterIncremented"
+            case .decremented: "CounterDecremented"
+            }
+        }
     }
 
     enum Failure: Error {
