@@ -1,7 +1,11 @@
 import Foundation
 
-public protocol Event: Sendable, Codable, Equatable {
+public protocol Event: Message {
     var eventType: String { get }
+}
+
+extension Event {
+    public var messageType: String { eventType }
 }
 
 public struct EventMetadata: Sendable, Codable, Equatable {

@@ -13,7 +13,7 @@ enum OrderEvent: Event {
 }
 
 struct ChargePayment: Command {
-    static let commandType = "ChargePayment"
+    var commandType: String { "ChargePayment" }
     let orderId: String
     let amount: Int
 }

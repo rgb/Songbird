@@ -21,17 +21,17 @@ enum BankAccountEvent: Event {
 }
 
 struct OpenAccount: Command {
-    static let commandType = "OpenAccount"
+    var commandType: String { "OpenAccount" }
     let name: String
 }
 
 struct Deposit: Command {
-    static let commandType = "Deposit"
+    var commandType: String { "Deposit" }
     let amount: Int
 }
 
 struct Withdraw: Command {
-    static let commandType = "Withdraw"
+    var commandType: String { "Withdraw" }
     let amount: Int
 }
 

@@ -1,3 +1,7 @@
-public protocol Command: Sendable {
-    static var commandType: String { get }
+public protocol Command: Message {
+    var commandType: String { get }
+}
+
+extension Command {
+    public var messageType: String { commandType }
 }

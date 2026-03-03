@@ -3,14 +3,15 @@ import Testing
 @testable import Songbird
 
 struct IncrementCounter: Command {
-    static let commandType = "IncrementCounter"
+    var commandType: String { "IncrementCounter" }
     let amount: Int
 }
 
 @Suite("Command")
 struct CommandTests {
     @Test func commandTypeIsAccessible() {
-        #expect(IncrementCounter.commandType == "IncrementCounter")
+        let cmd = IncrementCounter(amount: 1)
+        #expect(cmd.commandType == "IncrementCounter")
     }
 
     @Test func commandIsSendable() {
