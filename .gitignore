@@ -1,0 +1,15 @@
+# Swift / SPM
+.DS_Store
+/.build
+/Packages
+xcuserdata/
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+Package.resolved
+
+# Local reference materials (not part of the framework)
+ether/
+smew/
+*.epub
