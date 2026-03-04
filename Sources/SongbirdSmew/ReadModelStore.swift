@@ -136,3 +136,35 @@ extension ReadModelStore {
         try connection.query(build).decodeFirst(type, using: snakeCaseDecoder)
     }
 }
+
+// MARK: - Rebuild
+
+extension ReadModelStore {
+    /// Rebuilds the read model by replaying all events from the store.
+    ///
+    /// Reads events in batches by global position and applies each to every
+    /// projector. Projectors that need bulk performance can use `Appender`
+    /// internally via their reference to this store's `withConnection`.
+    ///
+    /// - Parameters:
+    ///   - store: The event store to read from.
+    ///   - projectors: The projectors to apply events to.
+    ///   - batchSize: Number of events to read per batch (default 1000).
+    public func rebuild(
+        from store: any EventStore,
+        projectors: [any Projector],
+        batchSize: Int = 1000
+    ) async throws {
+        var position: Int64 = 0
+        while true {
+            let batch = try await store.readAll(from: position, maxCount: batchSize)
+            guard !batch.isEmpty else { break }
+            for record in batch {
+                for projector in projectors {
+                    try await projector.apply(record)
+                }
+            }
+            position = batch.last!.globalPosition + 1
+        }
+    }
+}

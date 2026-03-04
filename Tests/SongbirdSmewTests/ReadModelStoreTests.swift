@@ -1,3 +1,5 @@
+import Songbird
+import SongbirdTesting
 import Testing
 import Smew
 
@@ -6,6 +8,25 @@ import Smew
 private struct Widget: Decodable, Equatable {
     let id: Int64
     let name: String
+}
+
+private enum TestEvent: Event, Equatable {
+    case itemAdded(name: String)
+
+    var eventType: String {
+        switch self {
+        case .itemAdded: "ItemAdded"
+        }
+    }
+}
+
+private actor CountingProjector: Projector {
+    let projectorId = "Counting"
+    private(set) var count = 0
+
+    func apply(_ event: RecordedEvent) async throws {
+        count += 1
+    }
 }
 
 @Suite("ReadModelStore")
@@ -118,5 +139,36 @@ struct ReadModelStoreTests {
         await store.registerMigration { _ in order.append(3) }
         try await store.migrate()
         #expect(order == [1, 2, 3])
+    }
+
+    // MARK: - Rebuild
+
+    @Test func rebuildReplaysAllEvents() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
+        let eventStore = InMemoryEventStore(registry: registry)
+
+        let meta = EventMetadata(traceId: "test")
+        let stream = StreamName(category: "item", id: "1")
+        _ = try await eventStore.append(TestEvent.itemAdded(name: "A"), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await eventStore.append(TestEvent.itemAdded(name: "B"), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await eventStore.append(TestEvent.itemAdded(name: "C"), to: stream, metadata: meta, expectedVersion: nil)
+
+        let readModel = try ReadModelStore()
+        let projector = CountingProjector()
+        try await readModel.rebuild(from: eventStore, projectors: [projector])
+
+        let count = await projector.count
+        #expect(count == 3)
+    }
+
+    @Test func rebuildWithNoEventsSucceeds() async throws {
+        let eventStore = InMemoryEventStore()
+        let readModel = try ReadModelStore()
+        let projector = CountingProjector()
+        try await readModel.rebuild(from: eventStore, projectors: [projector])
+
+        let count = await projector.count
+        #expect(count == 0)
     }
 }
