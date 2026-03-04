@@ -1,16 +1,36 @@
 public struct AggregateRepository<A: Aggregate>: Sendable {
     public let store: any EventStore
     public let registry: EventTypeRegistry
+    public let snapshotStore: (any SnapshotStore)?
+    public let snapshotPolicy: SnapshotPolicy
 
-    public init(store: any EventStore, registry: EventTypeRegistry) {
+    public init(
+        store: any EventStore,
+        registry: EventTypeRegistry,
+        snapshotStore: (any SnapshotStore)? = nil,
+        snapshotPolicy: SnapshotPolicy = .none
+    ) {
         self.store = store
         self.registry = registry
+        self.snapshotStore = snapshotStore
+        self.snapshotPolicy = snapshotPolicy
     }
 
     public func load(id: String) async throws -> (state: A.State, version: Int64) {
         let stream = StreamName(category: A.category, id: id)
-        let records = try await store.readStream(stream, from: 0, maxCount: Int.max)
+
+        // Try loading a snapshot
         var state = A.initialState
+        var fromPosition: Int64 = 0
+        if let snapshotStore {
+            if let snapshot: (state: A.State, version: Int64) = try await snapshotStore.load(for: stream) {
+                state = snapshot.state
+                fromPosition = snapshot.version + 1
+            }
+        }
+
+        // Fold events from the snapshot version (or 0 if no snapshot)
+        let records = try await store.readStream(stream, from: fromPosition, maxCount: Int.max)
         for record in records {
             let decoded = try registry.decode(record)
             guard let event = decoded as? A.Event else {
@@ -18,7 +38,7 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
             }
             state = A.apply(state, event)
         }
-        let version = records.last?.position ?? -1
+        let version = records.last?.position ?? (fromPosition > 0 ? fromPosition - 1 : -1)
         return (state, version)
     }
 
@@ -42,6 +62,15 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
             recorded.append(result)
         }
         return recorded
+    }
+
+    /// Explicitly saves a snapshot of the aggregate's current state.
+    public func saveSnapshot(id: String) async throws {
+        guard let snapshotStore else { return }
+        let stream = StreamName(category: A.category, id: id)
+        let (state, version) = try await load(id: id)
+        guard version >= 0 else { return }
+        try await snapshotStore.save(state, version: version, for: stream)
     }
 }
 

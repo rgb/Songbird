@@ -251,6 +251,67 @@ struct AggregateRepositoryTests {
         #expect(events.count == 1) // only the open event
     }
 
+    // MARK: - Snapshot Loading
+
+    @Test func loadUsesSnapshotWhenAvailable() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore
+        )
+
+        // Append 3 events
+        let stream = StreamName(category: "account", id: "acct-1")
+        _ = try await store.append(BankAccountEvent.opened(name: "Alice"), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.deposited(amount: 100), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.withdrawn(amount: 30), to: stream, metadata: meta, expectedVersion: nil)
+
+        // Save a snapshot at version 1 (after opened + deposited)
+        let snappedState = BankAccountAggregate.State(isOpen: true, balance: 100, name: "Alice")
+        try await snapshotStore.save(snappedState, version: 1, for: stream)
+
+        // Load should resume from snapshot, only replaying the withdraw
+        let (state, version) = try await repo.load(id: "acct-1")
+        #expect(state == BankAccountAggregate.State(isOpen: true, balance: 70, name: "Alice"))
+        #expect(version == 2)
+    }
+
+    @Test func loadWithoutSnapshotStillWorks() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore
+        )
+
+        let stream = StreamName(category: "account", id: "acct-1")
+        _ = try await store.append(BankAccountEvent.opened(name: "Bob"), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.deposited(amount: 50), to: stream, metadata: meta, expectedVersion: nil)
+
+        let (state, version) = try await repo.load(id: "acct-1")
+        #expect(state == BankAccountAggregate.State(isOpen: true, balance: 50, name: "Bob"))
+        #expect(version == 1)
+    }
+
+    @Test func loadWithNoSnapshotStoreDefaultsBehavior() async throws {
+        let (repo, store) = makeRepo()
+        let stream = StreamName(category: "account", id: "acct-1")
+        _ = try await store.append(BankAccountEvent.opened(name: "Carol"), to: stream, metadata: meta, expectedVersion: nil)
+
+        let (state, version) = try await repo.load(id: "acct-1")
+        #expect(state == BankAccountAggregate.State(isOpen: true, balance: 0, name: "Carol"))
+        #expect(version == 0)
+    }
+
     @Test func loadWithWrongRegistryThrowsUnexpectedEventType() async throws {
         // Use a registry that maps "AccountOpened" to CounterAggregate.Event (wrong type)
         let wrongRegistry = EventTypeRegistry()
