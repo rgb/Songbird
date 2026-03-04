@@ -56,3 +56,28 @@ public actor ReadModelStore {
         try body(connection)
     }
 }
+
+private let snakeCaseDecoder = RowDecoder(keyDecodingStrategy: .convertFromSnakeCase)
+
+// MARK: - Query Helpers
+
+extension ReadModelStore {
+    /// Executes a query built with `@QueryBuilder` and decodes all rows.
+    ///
+    /// Uses `RowDecoder(.convertFromSnakeCase)` so DuckDB `snake_case` columns
+    /// map automatically to Swift `camelCase` properties.
+    public func query<T: Decodable>(
+        _ type: T.Type,
+        @QueryBuilder _ build: () -> QueryFragment
+    ) throws -> [T] {
+        try connection.query(build).decode(type, using: snakeCaseDecoder)
+    }
+
+    /// Executes a query and decodes the first row, or returns `nil`.
+    public func queryFirst<T: Decodable>(
+        _ type: T.Type,
+        @QueryBuilder _ build: () -> QueryFragment
+    ) throws -> T? {
+        try connection.query(build).decodeFirst(type, using: snakeCaseDecoder)
+    }
+}
