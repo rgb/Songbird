@@ -225,4 +225,45 @@ struct AggregateStateStreamTests {
         #expect(states[2] == BalanceAggregate.State(balance: 30))  // +20
         #expect(states[3] == BalanceAggregate.State(balance: 60))  // +30
     }
+
+    // MARK: - Snapshot-Aware Loading
+
+    @Test func snapshotSkipsEarlyEvents() async throws {
+        let (store, registry) = makeStore()
+        let snapshotStore = InMemorySnapshotStore()
+
+        // Append 3 events
+        _ = try await store.append(BalanceAggregate.Event.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(BalanceAggregate.Event.credited(amount: 50), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(BalanceAggregate.Event.debited(amount: 20), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        // Save a snapshot at version 1 (after first two events: balance 150)
+        try await snapshotStore.save(
+            BalanceAggregate.State(balance: 150),
+            version: 1,
+            for: stream
+        )
+
+        let stateStream = AggregateStateStream<BalanceAggregate>(
+            id: "acct-1",
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = StateCollector<BalanceAggregate.State>()
+        let task = Task {
+            for try await state in stateStream {
+                await collector.append(state)
+                if await collector.count == 1 { break }
+            }
+        }
+
+        try await task.value
+        let states = await collector.states
+        #expect(states.count == 1)
+        // Snapshot (150) + event at position 2 (debit 20) = 130
+        #expect(states[0] == BalanceAggregate.State(balance: 130))
+    }
 }

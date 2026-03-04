@@ -35,6 +35,7 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
     public let id: String
     public let store: any EventStore
     public let registry: EventTypeRegistry
+    public let snapshotStore: (any SnapshotStore)?
     public let batchSize: Int
     public let tickInterval: Duration
 
@@ -42,12 +43,14 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
         id: String,
         store: any EventStore,
         registry: EventTypeRegistry,
+        snapshotStore: (any SnapshotStore)? = nil,
         batchSize: Int = 100,
         tickInterval: Duration = .milliseconds(100)
     ) {
         self.id = id
         self.store = store
         self.registry = registry
+        self.snapshotStore = snapshotStore
         self.batchSize = batchSize
         self.tickInterval = tickInterval
     }
@@ -57,6 +60,7 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
             stream: StreamName(category: A.category, id: id),
             store: store,
             registry: registry,
+            snapshotStore: snapshotStore,
             batchSize: batchSize,
             tickInterval: tickInterval
         )
@@ -66,6 +70,7 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
         let stream: StreamName
         let store: any EventStore
         let registry: EventTypeRegistry
+        let snapshotStore: (any SnapshotStore)?
         let batchSize: Int
         let tickInterval: Duration
         private var state: A.State = A.initialState
@@ -76,12 +81,14 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
             stream: StreamName,
             store: any EventStore,
             registry: EventTypeRegistry,
+            snapshotStore: (any SnapshotStore)?,
             batchSize: Int,
             tickInterval: Duration
         ) {
             self.stream = stream
             self.store = store
             self.registry = registry
+            self.snapshotStore = snapshotStore
             self.batchSize = batchSize
             self.tickInterval = tickInterval
         }
@@ -90,6 +97,13 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
             // Phase 1: Initial fold -- read all existing events and yield folded state
             if !initialFoldDone {
                 initialFoldDone = true
+
+                // Try loading a snapshot
+                if let snapshotStore,
+                   let snapshot: (state: A.State, version: Int64) = try await snapshotStore.load(for: stream) {
+                    state = snapshot.state
+                    position = snapshot.version + 1
+                }
 
                 while true {
                     let batch = try await store.readStream(
