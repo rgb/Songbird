@@ -333,4 +333,83 @@ struct AggregateRepositoryTests {
             _ = try await repo.load(id: "acct-1")
         }
     }
+
+    // MARK: - Auto-Snapshotting
+
+    @Test func executeAutoSnapshotsEveryNEvents() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore,
+            snapshotPolicy: .everyNEvents(2)
+        )
+
+        let stream = StreamName(category: "account", id: "acct-1")
+
+        // Event at position 0: open
+        _ = try await repo.execute(OpenAccount(name: "Alice"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
+        var snapshot: (state: BankAccountAggregate.State, version: Int64)? =
+            try await snapshotStore.load(for: stream)
+        #expect(snapshot == nil)
+
+        // Event at position 1: deposit — now 2 events total, should trigger snapshot
+        _ = try await repo.execute(Deposit(amount: 100), on: "acct-1", metadata: meta, using: DepositHandler.self)
+        snapshot = try await snapshotStore.load(for: stream)
+        #expect(snapshot != nil)
+        #expect(snapshot?.state == BankAccountAggregate.State(isOpen: true, balance: 100, name: "Alice"))
+        #expect(snapshot?.version == 1)
+    }
+
+    @Test func executeWithPolicyNoneDoesNotSnapshot() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore,
+            snapshotPolicy: .none
+        )
+
+        _ = try await repo.execute(OpenAccount(name: "Alice"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
+        _ = try await repo.execute(Deposit(amount: 100), on: "acct-1", metadata: meta, using: DepositHandler.self)
+        _ = try await repo.execute(Deposit(amount: 200), on: "acct-1", metadata: meta, using: DepositHandler.self)
+
+        let stream = StreamName(category: "account", id: "acct-1")
+        let snapshot: (state: BankAccountAggregate.State, version: Int64)? =
+            try await snapshotStore.load(for: stream)
+        #expect(snapshot == nil)
+    }
+
+    @Test func explicitSaveSnapshotWorks() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore,
+            snapshotPolicy: .none
+        )
+
+        _ = try await repo.execute(OpenAccount(name: "Alice"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
+        _ = try await repo.execute(Deposit(amount: 100), on: "acct-1", metadata: meta, using: DepositHandler.self)
+
+        try await repo.saveSnapshot(id: "acct-1")
+
+        let stream = StreamName(category: "account", id: "acct-1")
+        let snapshot: (state: BankAccountAggregate.State, version: Int64)? =
+            try await snapshotStore.load(for: stream)
+        #expect(snapshot?.state == BankAccountAggregate.State(isOpen: true, balance: 100, name: "Alice"))
+        #expect(snapshot?.version == 1)
+    }
 }

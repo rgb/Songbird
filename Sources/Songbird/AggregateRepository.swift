@@ -61,6 +61,20 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
             )
             recorded.append(result)
         }
+
+        // Auto-snapshot based on policy
+        if case .everyNEvents(let n) = snapshotPolicy, let snapshotStore, !recorded.isEmpty {
+            let newVersion = version + Int64(recorded.count)
+            // Snapshot when the total event count (newVersion + 1) is a multiple of n
+            if (newVersion + 1) % Int64(n) == 0 {
+                var snapshotState = state
+                for event in events {
+                    snapshotState = A.apply(snapshotState, event)
+                }
+                try await snapshotStore.save(snapshotState, version: newVersion, for: stream)
+            }
+        }
+
         return recorded
     }
 
