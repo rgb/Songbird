@@ -73,4 +73,50 @@ struct ReadModelStoreTests {
         }
         #expect(result == nil)
     }
+
+    // MARK: - Migrations
+
+    @Test func migrateRunsPendingMigrations() async throws {
+        let store = try ReadModelStore()
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE v1_table (id INTEGER)")
+        }
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE v2_table (id INTEGER)")
+        }
+        try await store.migrate()
+
+        let v1Count = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM v1_table").scalarInt64()
+        }
+        let v2Count = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM v2_table").scalarInt64()
+        }
+        #expect(v1Count == 0)
+        #expect(v2Count == 0)
+    }
+
+    @Test func migrateSkipsAlreadyApplied() async throws {
+        let store = try ReadModelStore()
+        // Use nonisolated(unsafe) var because the migration closure captures it
+        // and we need to track how many times it runs
+        nonisolated(unsafe) var runCount = 0
+        await store.registerMigration { conn in
+            runCount += 1
+            try conn.execute("CREATE TABLE m1 (id INTEGER)")
+        }
+        try await store.migrate()
+        try await store.migrate()  // Second call should be a no-op
+        #expect(runCount == 1)
+    }
+
+    @Test func migrateRunsInOrder() async throws {
+        let store = try ReadModelStore()
+        nonisolated(unsafe) var order: [Int] = []
+        await store.registerMigration { _ in order.append(1) }
+        await store.registerMigration { _ in order.append(2) }
+        await store.registerMigration { _ in order.append(3) }
+        try await store.migrate()
+        #expect(order == [1, 2, 3])
+    }
 }

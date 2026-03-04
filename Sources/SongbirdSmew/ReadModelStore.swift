@@ -3,6 +3,10 @@ import Dispatch
 import Foundation
 import Songbird
 
+/// A migration closure that receives a DuckDB `Connection` and creates or
+/// modifies read model tables.
+public typealias Migration = @Sendable (Connection) throws -> Void
+
 /// A DuckDB-backed read model store for materialized projections.
 ///
 /// Owns a Smew `Database` and `Connection`, serializing all access through a
@@ -45,6 +49,57 @@ public actor ReadModelStore {
         }
         self.connection = try database.connect()
     }
+
+    // MARK: - Migrations
+
+    private var migrations: [Migration] = []
+
+    /// Registers a migration to run during `migrate()`.
+    ///
+    /// Migrations execute in registration order. Each migration receives the
+    /// underlying DuckDB `Connection` and should create/alter tables as needed.
+    /// Since read models are rebuildable from events, destructive operations
+    /// (DROP + CREATE) are safe.
+    public func registerMigration(_ migration: @escaping Migration) {
+        migrations.append(migration)
+    }
+
+    /// Runs all pending migrations.
+    ///
+    /// Tracks the current schema version in a `schema_version` table. Each
+    /// migration runs in a transaction with its version bump, ensuring atomicity.
+    /// Call once at startup after registering all migrations.
+    public func migrate() throws {
+        try ensureSchemaVersionTable()
+        let currentVersion = try schemaVersion()
+        for (index, migration) in migrations.enumerated() {
+            let version = index + 1
+            if version > currentVersion {
+                try connection.withTransaction {
+                    try migration(connection)
+                    try connection.execute(
+                        "UPDATE schema_version SET version = \(param: Int64(version))"
+                    )
+                }
+            }
+        }
+    }
+
+    private func ensureSchemaVersionTable() throws {
+        try connection.execute(
+            "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
+        )
+        let count = try connection.query("SELECT COUNT(*) FROM schema_version").scalarInt64() ?? 0
+        if count == 0 {
+            try connection.execute("INSERT INTO schema_version VALUES (0)")
+        }
+    }
+
+    private func schemaVersion() throws -> Int {
+        Int(try connection.query("SELECT version FROM schema_version").scalarInt64() ?? 0)
+    }
+
+    // MARK: - Connection Access
 
     /// Provides direct access to the underlying Smew `Connection`.
     ///
