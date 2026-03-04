@@ -68,14 +68,17 @@ New registration method:
 registry.registerUpcast(
     from: OrderPlaced_v1.self,
     to: OrderPlaced_v2.self,
-    upcast: OrderPlacedUpcast_v1_v2()
+    upcast: OrderPlacedUpcast_v1_v2(),
+    oldEventType: "OrderPlaced_v1"
 )
 ```
+
+The `oldEventType` parameter is the string that appears in the `eventType` column of stored events for the old version. This is needed because `eventType` is an instance property on `Event` — we can't get it from the metatype alone.
 
 `registerUpcast` does three things:
 1. Registers a decoder for the old event type string
 2. Stores the upcast function in a chain keyed by the old event type
-3. Validates that `NewEvent.version == OldEvent.version + 1`
+3. Validates via `precondition` that `NewEvent.version == OldEvent.version + 1`
 
 `decode()` on read:
 1. Decode JSON to the stored version
