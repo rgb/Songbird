@@ -93,4 +93,8 @@ struct EventTypeRegistryTests {
         #expect(d == .deposited(amount: 100))
         #expect(w == .withdrawn(amount: 50, reason: "ATM"))
     }
+
+    @Test func existingEventsDefaultToVersion1() {
+        #expect(AccountEvent.version == 1)
+    }
 }

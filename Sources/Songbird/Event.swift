@@ -2,10 +2,12 @@ import Foundation
 
 public protocol Event: Message {
     var eventType: String { get }
+    static var version: Int { get }
 }
 
 extension Event {
     public var messageType: String { eventType }
+    public static var version: Int { 1 }
 }
 
 public struct EventMetadata: Sendable, Codable, Equatable {
