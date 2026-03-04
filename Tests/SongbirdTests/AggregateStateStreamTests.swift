@@ -7,7 +7,7 @@ import Testing
 // MARK: - Test Aggregate
 
 enum BalanceAggregate: Aggregate {
-    struct State: Sendable, Equatable {
+    struct State: Sendable, Equatable, Codable {
         var balance: Int
     }
 

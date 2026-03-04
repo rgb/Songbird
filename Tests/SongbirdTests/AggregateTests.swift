@@ -3,7 +3,7 @@ import Testing
 @testable import Songbird
 
 enum CounterAggregate: Aggregate {
-    struct State: Sendable, Equatable {
+    struct State: Sendable, Equatable, Codable {
         var count: Int
     }
 

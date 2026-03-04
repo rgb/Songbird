@@ -1,5 +1,5 @@
 public protocol Aggregate {
-    associatedtype State: Sendable, Equatable
+    associatedtype State: Sendable, Equatable, Codable
     associatedtype Event: Songbird.Event
     associatedtype Failure: Error
 

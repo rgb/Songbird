@@ -36,7 +36,7 @@ struct Withdraw: Command {
 }
 
 enum BankAccountAggregate: Aggregate {
-    struct State: Sendable, Equatable {
+    struct State: Sendable, Equatable, Codable {
         var isOpen: Bool = false
         var balance: Int = 0
         var name: String = ""

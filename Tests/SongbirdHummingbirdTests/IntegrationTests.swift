@@ -20,7 +20,7 @@ private enum BalanceEvent: Event, Equatable {
 }
 
 private enum BalanceAggregate: Aggregate {
-    struct State: Sendable, Equatable { var balance: Int }
+    struct State: Sendable, Equatable, Codable { var balance: Int }
     typealias Failure = Never
 
     static let category = "account"

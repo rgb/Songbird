@@ -5,7 +5,7 @@ import Testing
 
 // Test aggregate for harness tests
 enum HarnessCounter: Aggregate {
-    struct State: Sendable, Equatable {
+    struct State: Sendable, Equatable, Codable {
         var count: Int
     }
 

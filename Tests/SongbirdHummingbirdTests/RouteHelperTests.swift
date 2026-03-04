@@ -22,7 +22,7 @@ private enum CounterEvent: Event, Equatable {
 }
 
 private enum CounterAggregate: Aggregate {
-    struct State: Sendable, Equatable {
+    struct State: Sendable, Equatable, Codable {
         var count: Int
     }
     typealias Failure = CounterError
