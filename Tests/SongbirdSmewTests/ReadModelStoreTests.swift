@@ -256,4 +256,23 @@ struct ReadModelStoreTests {
         await pipeline.stop()
         runTask.cancel()
     }
+
+    // MARK: - Tiered Storage
+
+    @Test func initWithDuckDBModeIsDefault() async throws {
+        // Default init should work exactly as before
+        let store = try ReadModelStore()
+        let result = try await store.withConnection { conn in
+            try conn.query("SELECT 42 AS value").scalarInt64()
+        }
+        #expect(result == 42)
+    }
+
+    @Test func registerTableTracksNames() async throws {
+        let store = try ReadModelStore()
+        await store.registerTable("orders")
+        await store.registerTable("line_items")
+        let tables = await store.registeredTables
+        #expect(tables == ["orders", "line_items"])
+    }
 }

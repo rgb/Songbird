@@ -26,11 +26,16 @@ public typealias Migration = @Sendable (Connection) throws -> Void
 public actor ReadModelStore {
     public let database: Database
 
-    /// The underlying DuckDB connection. Marked `nonisolated(unsafe)` because all access
-    /// is serialized through this actor's custom `DispatchSerialQueue` executor.
-    nonisolated(unsafe) let connection: Connection
+    /// The underlying DuckDB connection. All access is serialized through this
+    /// actor's custom `DispatchSerialQueue` executor.
+    let connection: Connection
 
     private let executor: DispatchSerialQueue
+
+    /// The storage mode for this read model store.
+    public let storageMode: StorageMode
+
+    private var isTiered: Bool
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
         executor.asUnownedSerialExecutor()
@@ -38,21 +43,66 @@ public actor ReadModelStore {
 
     /// Creates a new read model store.
     ///
-    /// - Parameter path: File path for persistent storage. Pass `nil` (default) for
-    ///   an in-memory database, suitable for testing.
-    public init(path: String? = nil) throws {
+    /// - Parameters:
+    ///   - path: File path for persistent storage. Pass `nil` (default) for
+    ///     an in-memory database, suitable for testing.
+    ///   - storageMode: Storage mode (default: `.duckdb`). Use `.tiered` for
+    ///     hot/cold DuckLake/Parquet archival.
+    public init(path: String? = nil, storageMode: StorageMode = .duckdb) throws {
         self.executor = DispatchSerialQueue(label: "songbird.read-model-store")
+        self.storageMode = storageMode
+        self.isTiered = storageMode.isTiered
         if let path {
             self.database = try Database(store: .file(at: URL(fileURLWithPath: path)))
         } else {
             self.database = try Database(store: .inMemory)
         }
         self.connection = try database.connect()
+        if case .tiered(let config) = storageMode {
+            try Self.attachDuckLake(connection: connection, config: config)
+        }
+    }
+
+    /// The DuckDB schema name for the cold tier.
+    static let coldSchemaName = "lake"
+
+    private static func attachDuckLake(connection: Connection, config: DuckLakeConfig) throws {
+        try connection.execute("INSTALL ducklake")
+        try connection.execute("LOAD ducklake")
+        try connection.execute(
+            "ATTACH 'ducklake:\(config.catalogPath)' AS \(Self.coldSchemaName) (DATA_PATH '\(config.dataPath)')"
+        )
+    }
+
+    /// Enables tiered mode for testing without requiring DuckLake.
+    /// Call after attaching an in-memory database as "lake" via:
+    /// `try store.withConnection { conn in try conn.execute("ATTACH ':memory:' AS lake") }`
+    func enableTieredModeForTesting() {
+        isTiered = true
     }
 
     // MARK: - Migrations
 
     private var migrations: [Migration] = []
+
+    // MARK: - Table Registration
+
+    private var _registeredTables: [String] = []
+
+    /// The list of table names registered for tiered storage management.
+    public var registeredTables: [String] { _registeredTables }
+
+    /// Registers a table name for tiered storage management.
+    ///
+    /// In tiered mode, registered tables get cold-tier mirrors and UNION ALL views
+    /// created during `migrate()`. Call this before `migrate()` for each table
+    /// that should participate in tiering.
+    ///
+    /// In `.duckdb` mode, this is a no-op for cold-tier setup but still tracks
+    /// the table name, allowing projectors to be written mode-agnostically.
+    public func registerTable(_ name: String) {
+        _registeredTables.append(name)
+    }
 
     /// Registers a migration to run during `migrate()`.
     ///
