@@ -73,6 +73,12 @@ HTTP Request
 - Event versioning/upcasting
 - Gateway/notifier abstraction
 
+## Swift Algorithms / Swift Async Algorithms
+- [https://github.com/apple/swift-algorithms](Swift Algorithms)
+- [https://github.com/apple/swift-async-algorithms](Swift Async Algorithms)
+
+Familiarise yourself with Swift Algorithms and Swift Async Algorithms and utilise them where appropriate.
+
 ## Swift Concurrency
 
 Use the reading list at [research/00-swift-concurrency-zero-to-hero.md](research/00-swift-concurrency-zero-to-hero.md) for guidance. For most cases, the information in levels 0, 1, and 2 should be sufficient. I'll list the links here as well.
