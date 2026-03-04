@@ -29,6 +29,26 @@ private actor CountingProjector: Projector {
     }
 }
 
+private actor ItemProjector: Projector {
+    let projectorId = "Items"
+    let readModel: ReadModelStore
+
+    init(readModel: ReadModelStore) {
+        self.readModel = readModel
+    }
+
+    func apply(_ event: RecordedEvent) async throws {
+        guard event.eventType == "ItemAdded" else { return }
+        let envelope = try event.decode(TestEvent.self)
+        guard case .itemAdded(let name) = envelope.event else { return }
+        try await readModel.withConnection { conn -> Void in
+            try conn.execute(
+                "INSERT INTO items (name, stream) VALUES (\(param: name), \(param: event.streamName.description))"
+            )
+        }
+    }
+}
+
 @Suite("ReadModelStore")
 struct ReadModelStoreTests {
 
@@ -170,5 +190,51 @@ struct ReadModelStoreTests {
 
         let count = await projector.count
         #expect(count == 0)
+    }
+
+    // MARK: - Full Projection Cycle
+
+    @Test func fullProjectionCycle() async throws {
+        // Setup
+        let registry = EventTypeRegistry()
+        registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
+        let eventStore = InMemoryEventStore(registry: registry)
+        let readModel = try ReadModelStore()
+
+        await readModel.registerMigration { conn in
+            try conn.execute("CREATE TABLE items (name VARCHAR, stream VARCHAR)")
+        }
+        try await readModel.migrate()
+
+        let projector = ItemProjector(readModel: readModel)
+        let pipeline = ProjectionPipeline()
+        await pipeline.register(projector)
+
+        let runTask = Task { await pipeline.run() }
+
+        // Append and project
+        let meta = EventMetadata(traceId: "test")
+        let stream = StreamName(category: "item", id: "1")
+        let recorded = try await eventStore.append(
+            TestEvent.itemAdded(name: "Widget"),
+            to: stream, metadata: meta, expectedVersion: nil
+        )
+        await pipeline.enqueue(recorded)
+        try await pipeline.waitForIdle()
+
+        // Query
+        struct ItemRow: Decodable, Equatable {
+            let name: String
+            let stream: String
+        }
+        let items: [ItemRow] = try await readModel.query(ItemRow.self) {
+            "SELECT name, stream FROM items"
+        }
+        #expect(items.count == 1)
+        #expect(items[0] == ItemRow(name: "Widget", stream: "item-1"))
+
+        // Cleanup
+        await pipeline.stop()
+        runTask.cancel()
     }
 }
