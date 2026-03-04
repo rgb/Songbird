@@ -101,6 +101,7 @@ public actor ReadModelStore {
     /// In `.duckdb` mode, this is a no-op for cold-tier setup but still tracks
     /// the table name, allowing projectors to be written mode-agnostically.
     public func registerTable(_ name: String) {
+        guard !_registeredTables.contains(name) else { return }
         _registeredTables.append(name)
     }
 
@@ -238,6 +239,11 @@ extension ReadModelStore {
             let moveCount = Int(countResult.scalarInt64() ?? 0)
             guard moveCount > 0 else { continue }
 
+            // INSERT and DELETE are not wrapped in a single transaction because DuckDB
+            // does not support cross-database transactions (hot and cold are separate
+            // attached databases). If the process crashes between INSERT and DELETE,
+            // the UNION ALL view may show duplicates until the next tiering pass
+            // cleans them up (the DELETE would find 0 matching rows).
             try connection.execute(
                 "INSERT INTO \(coldTable) SELECT * FROM \(hotTable) WHERE \(whereClause)"
             )
