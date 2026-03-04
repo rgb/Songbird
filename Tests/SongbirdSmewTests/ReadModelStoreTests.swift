@@ -411,6 +411,69 @@ struct ReadModelStoreTests {
         #expect(rows[0].name == "old")
         #expect(rows[1].name == "recent")
     }
+
+    // MARK: - Full Tiered Cycle
+
+    @Test func fullTieredProjectionCycle() async throws {
+        let store = try await makeTieredStore()
+
+        await store.registerTable("items")
+        await store.registerMigration { conn in
+            try conn.execute("""
+                CREATE TABLE items (
+                    name VARCHAR,
+                    stream VARCHAR,
+                    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        }
+        try await store.migrate()
+
+        // Write some "old" and "recent" data as a projector would
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO items VALUES ('old-item', 'item-1', TIMESTAMP '2020-01-01')")
+            try conn.execute("INSERT INTO items VALUES ('recent-item', 'item-2', CURRENT_TIMESTAMP)")
+        }
+
+        // Before tiering: hot has 2 rows, cold has 0
+        let hotBefore = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM items").scalarInt64()
+        }
+        #expect(hotBefore == 2)
+
+        // Tier old data
+        let moved = try await store.tierProjections(olderThan: 365)
+        #expect(moved == 1)
+
+        // After tiering: hot has 1, cold has 1
+        let hotAfter = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM items").scalarInt64()
+        }
+        let coldAfter = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM lake.items").scalarInt64()
+        }
+        #expect(hotAfter == 1)
+        #expect(coldAfter == 1)
+
+        // Query via view gets all data transparently
+        struct ItemRow: Decodable, Equatable {
+            let name: String
+            let stream: String
+        }
+        let allItems: [ItemRow] = try await store.query(ItemRow.self) {
+            "SELECT name, stream FROM v_items ORDER BY name"
+        }
+        #expect(allItems.count == 2)
+        #expect(allItems[0] == ItemRow(name: "old-item", stream: "item-1"))
+        #expect(allItems[1] == ItemRow(name: "recent-item", stream: "item-2"))
+
+        // Hot-only query gets only recent data
+        let hotItems: [ItemRow] = try await store.query(ItemRow.self) {
+            "SELECT name, stream FROM items ORDER BY name"
+        }
+        #expect(hotItems.count == 1)
+        #expect(hotItems[0] == ItemRow(name: "recent-item", stream: "item-2"))
+    }
 }
 
 /// Creates a ReadModelStore with a simulated cold tier for testing.
