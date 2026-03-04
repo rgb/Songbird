@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import Songbird
+@testable import SongbirdTesting
 
 // MARK: - Domain Events (from external aggregates)
 
@@ -159,17 +160,9 @@ struct ProcessManagerTests {
     // MARK: - AnyReaction Routing via Registration Helper
 
     @Test func reactionRoutesOrderPlacedEvent() throws {
-        let event = PMOrderEvent.placed(orderId: "order-1", total: 100)
-        let data = try JSONEncoder().encode(event)
-        let recorded = RecordedEvent(
-            id: UUID(),
-            streamName: StreamName(category: "order", id: "order-1"),
-            position: 0,
-            globalPosition: 0,
-            eventType: "OrderPlaced",
-            data: data,
-            metadata: EventMetadata(),
-            timestamp: Date()
+        let recorded = try RecordedEvent(
+            event: PMOrderEvent.placed(orderId: "order-1", total: 100),
+            streamName: StreamName(category: "order", id: "order-1")
         )
 
         let route = try PMFulfillmentPM.reactions[0].tryRoute(recorded)
@@ -177,8 +170,8 @@ struct ProcessManagerTests {
     }
 
     @Test func reactionReturnsNilForNonMatchingEventType() throws {
-        let event = PMOrderEvent.placed(orderId: "order-1", total: 100)
-        let data = try JSONEncoder().encode(event)
+        // Intentionally use a mismatched eventType to test that tryRoute returns nil
+        let data = try JSONEncoder().encode(PMOrderEvent.placed(orderId: "order-1", total: 100))
         let recorded = RecordedEvent(
             id: UUID(),
             streamName: StreamName(category: "order", id: "order-1"),
@@ -197,17 +190,9 @@ struct ProcessManagerTests {
     // MARK: - AnyReaction Handle via Registration Helper
 
     @Test func reactionAppliesOrderPlacedAndProducesOutput() throws {
-        let event = PMOrderEvent.placed(orderId: "order-1", total: 250)
-        let data = try JSONEncoder().encode(event)
-        let recorded = RecordedEvent(
-            id: UUID(),
-            streamName: StreamName(category: "order", id: "order-1"),
-            position: 0,
-            globalPosition: 0,
-            eventType: "OrderPlaced",
-            data: data,
-            metadata: EventMetadata(),
-            timestamp: Date()
+        let recorded = try RecordedEvent(
+            event: PMOrderEvent.placed(orderId: "order-1", total: 250),
+            streamName: StreamName(category: "order", id: "order-1")
         )
 
         let initialState = PMFulfillmentPM.initialState
@@ -221,17 +206,9 @@ struct ProcessManagerTests {
     }
 
     @Test func reactionAppliesPaymentChargedAndProducesShipment() throws {
-        let event = PMPaymentEvent.charged(orderId: "order-1")
-        let data = try JSONEncoder().encode(event)
-        let recorded = RecordedEvent(
-            id: UUID(),
-            streamName: StreamName(category: "payment", id: "order-1"),
-            position: 0,
-            globalPosition: 0,
-            eventType: "PaymentCharged",
-            data: data,
-            metadata: EventMetadata(),
-            timestamp: Date()
+        let recorded = try RecordedEvent(
+            event: PMPaymentEvent.charged(orderId: "order-1"),
+            streamName: StreamName(category: "payment", id: "order-1")
         )
 
         let currentState = PMFulfillmentPM.State(total: 250, paid: false)
@@ -245,17 +222,9 @@ struct ProcessManagerTests {
     }
 
     @Test func reactionAppliesPaymentFailedWithNoOutput() throws {
-        let event = PMPaymentEvent.failed(orderId: "order-1", reason: "Insufficient funds")
-        let data = try JSONEncoder().encode(event)
-        let recorded = RecordedEvent(
-            id: UUID(),
-            streamName: StreamName(category: "payment", id: "order-1"),
-            position: 0,
-            globalPosition: 0,
-            eventType: "PaymentFailed",
-            data: data,
-            metadata: EventMetadata(),
-            timestamp: Date()
+        let recorded = try RecordedEvent(
+            event: PMPaymentEvent.failed(orderId: "order-1", reason: "Insufficient funds"),
+            streamName: StreamName(category: "payment", id: "order-1")
         )
 
         let currentState = PMFulfillmentPM.State(total: 250, paid: false)

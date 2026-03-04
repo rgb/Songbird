@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import Songbird
+@testable import SongbirdTesting
 
 actor TestNotifier: Gateway {
     let gatewayId = "test-notifier"
@@ -10,6 +11,10 @@ actor TestNotifier: Gateway {
     func handle(_ event: RecordedEvent) async throws {
         handledEvents.append(event)
     }
+}
+
+private struct GatewayTestEvent: Event {
+    var eventType: String { "TestEvent" }
 }
 
 @Suite("Gateway")
@@ -21,16 +26,7 @@ struct GatewayTests {
 
     @Test func gatewayHandlesEvents() async throws {
         let gateway = TestNotifier()
-        let recorded = RecordedEvent(
-            id: UUID(),
-            streamName: StreamName(category: "test", id: "1"),
-            position: 0,
-            globalPosition: 0,
-            eventType: "TestEvent",
-            data: Data("{}".utf8),
-            metadata: EventMetadata(),
-            timestamp: Date()
-        )
+        let recorded = try RecordedEvent(event: GatewayTestEvent())
         try await gateway.handle(recorded)
         let count = await gateway.handledEvents.count
         #expect(count == 1)
