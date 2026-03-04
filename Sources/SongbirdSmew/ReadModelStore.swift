@@ -26,9 +26,9 @@ public typealias Migration = @Sendable (Connection) throws -> Void
 public actor ReadModelStore {
     public let database: Database
 
-    /// The underlying DuckDB connection. All access is serialized through this
-    /// actor's custom `DispatchSerialQueue` executor.
-    let connection: Connection
+    /// The underlying DuckDB connection. Marked `nonisolated(unsafe)` because all access
+    /// is serialized through this actor's custom `DispatchSerialQueue` executor.
+    nonisolated(unsafe) let connection: Connection
 
     private let executor: DispatchSerialQueue
 
@@ -133,6 +133,28 @@ public actor ReadModelStore {
                 }
             }
         }
+
+        if isTiered {
+            try createColdTierMirrors()
+        }
+    }
+
+    /// Creates cold-tier mirror tables and UNION ALL views for each registered table.
+    ///
+    /// For each registered table, creates an empty mirror in the cold schema with
+    /// identical column structure, then creates a view (`v_<table>`) that spans
+    /// both the hot and cold tiers via `UNION ALL`.
+    private func createColdTierMirrors() throws {
+        for table in _registeredTables {
+            // Create cold-tier mirror with identical schema (empty)
+            try connection.execute(
+                "CREATE TABLE IF NOT EXISTS \(Self.coldSchemaName).\"\(table)\" AS SELECT * FROM \"\(table)\" WHERE FALSE"
+            )
+            // Create UNION ALL view spanning both tiers
+            try connection.execute(
+                "CREATE OR REPLACE VIEW \"v_\(table)\" AS SELECT * FROM \"\(table)\" UNION ALL SELECT * FROM \(Self.coldSchemaName).\"\(table)\""
+            )
+        }
     }
 
     private func ensureSchemaVersionTable() throws {
@@ -184,6 +206,49 @@ extension ReadModelStore {
         @QueryBuilder _ build: () -> QueryFragment
     ) throws -> T? {
         try connection.query(build).decodeFirst(type, using: snakeCaseDecoder)
+    }
+}
+
+// MARK: - Tiering
+
+extension ReadModelStore {
+    /// Moves old projection rows from the hot tier to the cold tier.
+    ///
+    /// For each registered table, rows with `recorded_at` older than `thresholdDays`
+    /// are copied to the cold tier (DuckLake/Parquet) and deleted from the hot tier.
+    ///
+    /// Returns 0 immediately in `.duckdb` mode.
+    ///
+    /// - Parameter thresholdDays: Rows older than this many days are moved.
+    /// - Returns: Total number of rows moved across all registered tables.
+    @discardableResult
+    public func tierProjections(olderThan thresholdDays: Int) throws -> Int {
+        guard isTiered else { return 0 }
+
+        let whereClause = "\"recorded_at\" < CURRENT_TIMESTAMP::TIMESTAMP - INTERVAL '\(thresholdDays) days'"
+        var totalMoved = 0
+
+        for table in _registeredTables {
+            let hotTable = "\"\(table)\""
+            let coldTable = "\(Self.coldSchemaName).\"\(table)\""
+
+            let countResult = try connection.query(
+                "SELECT COUNT(*) FROM \(hotTable) WHERE \(whereClause)"
+            )
+            let moveCount = Int(countResult.scalarInt64() ?? 0)
+            guard moveCount > 0 else { continue }
+
+            try connection.execute(
+                "INSERT INTO \(coldTable) SELECT * FROM \(hotTable) WHERE \(whereClause)"
+            )
+            try connection.execute(
+                "DELETE FROM \(hotTable) WHERE \(whereClause)"
+            )
+
+            totalMoved += moveCount
+        }
+
+        return totalMoved
     }
 }
 

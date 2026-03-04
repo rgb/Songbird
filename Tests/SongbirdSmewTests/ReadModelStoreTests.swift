@@ -275,4 +275,150 @@ struct ReadModelStoreTests {
         let tables = await store.registeredTables
         #expect(tables == ["orders", "line_items"])
     }
+
+    // MARK: Cold Tier Mirrors & UNION ALL Views
+
+    @Test func migrateCreatesColdMirrorsInTieredMode() async throws {
+        let store = try await makeTieredStore()
+        await store.registerTable("orders")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, name VARCHAR, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        let coldCount = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM lake.orders").scalarInt64()
+        }
+        #expect(coldCount == 0)
+    }
+
+    @Test func migrateCreatesUnionViews() async throws {
+        let store = try await makeTieredStore()
+        await store.registerTable("orders")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, name VARCHAR, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO orders VALUES (1, 'hot', CURRENT_TIMESTAMP)")
+        }
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO lake.orders VALUES (2, 'cold', CURRENT_TIMESTAMP)")
+        }
+
+        struct OrderRow: Decodable { let id: Int64; let name: String }
+        let rows: [OrderRow] = try await store.query(OrderRow.self) {
+            "SELECT id, name FROM v_orders ORDER BY id"
+        }
+        #expect(rows.count == 2)
+        #expect(rows[0].name == "hot")
+        #expect(rows[1].name == "cold")
+    }
+
+    @Test func migrateSkipsColdMirrorsInDuckDBMode() async throws {
+        let store = try ReadModelStore()
+        await store.registerTable("orders")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, name VARCHAR, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        do {
+            _ = try await store.withConnection { conn in
+                try conn.query("SELECT COUNT(*) FROM v_orders").scalarInt64()
+            }
+            Issue.record("Expected query to fail — v_orders should not exist in duckdb mode")
+        } catch {
+            // Expected: table/view not found
+        }
+    }
+
+    // MARK: Tiering Operations
+
+    @Test func tierProjectionsMovesOldRows() async throws {
+        let store = try await makeTieredStore()
+        await store.registerTable("orders")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, name VARCHAR, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO orders VALUES (1, 'old', TIMESTAMP '2020-01-01')")
+            try conn.execute("INSERT INTO orders VALUES (2, 'recent', CURRENT_TIMESTAMP)")
+        }
+
+        let moved = try await store.tierProjections(olderThan: 365 * 5)
+        #expect(moved == 1)
+
+        let hotCount = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM orders").scalarInt64()
+        }
+        let coldCount = try await store.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM lake.orders").scalarInt64()
+        }
+        #expect(hotCount == 1)
+        #expect(coldCount == 1)
+    }
+
+    @Test func tierProjectionsReturnsZeroInDuckDBMode() async throws {
+        let store = try ReadModelStore()
+        let moved = try await store.tierProjections(olderThan: 0)
+        #expect(moved == 0)
+    }
+
+    @Test func tierProjectionsHandlesMultipleTables() async throws {
+        let store = try await makeTieredStore()
+        await store.registerTable("orders")
+        await store.registerTable("line_items")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, recorded_at TIMESTAMP)")
+            try conn.execute("CREATE TABLE line_items (id INTEGER, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO orders VALUES (1, TIMESTAMP '2020-01-01')")
+            try conn.execute("INSERT INTO line_items VALUES (1, TIMESTAMP '2020-01-01')")
+            try conn.execute("INSERT INTO line_items VALUES (2, TIMESTAMP '2020-01-01')")
+        }
+
+        let moved = try await store.tierProjections(olderThan: 365)
+        #expect(moved == 3)
+    }
+
+    @Test func viewSpansBothTiersAfterTiering() async throws {
+        let store = try await makeTieredStore()
+        await store.registerTable("orders")
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE orders (id INTEGER, name VARCHAR, recorded_at TIMESTAMP)")
+        }
+        try await store.migrate()
+
+        try await store.withConnection { conn in
+            try conn.execute("INSERT INTO orders VALUES (1, 'old', TIMESTAMP '2020-01-01')")
+            try conn.execute("INSERT INTO orders VALUES (2, 'recent', CURRENT_TIMESTAMP)")
+        }
+
+        _ = try await store.tierProjections(olderThan: 365)
+
+        struct OrderRow: Decodable { let id: Int64; let name: String }
+        let rows: [OrderRow] = try await store.query(OrderRow.self) {
+            "SELECT id, name FROM v_orders ORDER BY id"
+        }
+        #expect(rows.count == 2)
+        #expect(rows[0].name == "old")
+        #expect(rows[1].name == "recent")
+    }
+}
+
+/// Creates a ReadModelStore with a simulated cold tier for testing.
+private func makeTieredStore() async throws -> ReadModelStore {
+    let store = try ReadModelStore()
+    try await store.withConnection { conn in
+        try conn.execute("ATTACH ':memory:' AS lake")
+    }
+    await store.enableTieredModeForTesting()
+    return store
 }
