@@ -34,4 +34,62 @@ struct EventUpcastTests {
         let new = upcast.upcast(old)
         #expect(new == OrderPlaced_v2(itemId: "abc", quantity: 1))
     }
+
+    @Test func registryDecodesOldEventAsLatestVersion() throws {
+        let registry = EventTypeRegistry()
+        registry.register(OrderPlaced_v2.self, eventTypes: ["OrderPlaced_v2"])
+        registry.registerUpcast(
+            from: OrderPlaced_v1.self,
+            to: OrderPlaced_v2.self,
+            upcast: OrderPlacedUpcast_v1_v2(),
+            oldEventType: "OrderPlaced_v1"
+        )
+
+        // Encode a v1 event (simulating what the store holds)
+        let v1 = OrderPlaced_v1(itemId: "abc")
+        let data = try JSONEncoder().encode(v1)
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "order", id: "1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "OrderPlaced_v1",
+            data: data,
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+
+        let decoded = try registry.decode(recorded)
+        let typed = decoded as! OrderPlaced_v2
+        #expect(typed == OrderPlaced_v2(itemId: "abc", quantity: 1))
+    }
+
+    @Test func registryDecodesCurrentVersionDirectly() throws {
+        let registry = EventTypeRegistry()
+        registry.register(OrderPlaced_v2.self, eventTypes: ["OrderPlaced_v2"])
+        registry.registerUpcast(
+            from: OrderPlaced_v1.self,
+            to: OrderPlaced_v2.self,
+            upcast: OrderPlacedUpcast_v1_v2(),
+            oldEventType: "OrderPlaced_v1"
+        )
+
+        // Encode a v2 event (current version, no upcasting needed)
+        let v2 = OrderPlaced_v2(itemId: "abc", quantity: 5)
+        let data = try JSONEncoder().encode(v2)
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "order", id: "1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "OrderPlaced_v2",
+            data: data,
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+
+        let decoded = try registry.decode(recorded)
+        let typed = decoded as! OrderPlaced_v2
+        #expect(typed == OrderPlaced_v2(itemId: "abc", quantity: 5))
+    }
 }
