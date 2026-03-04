@@ -12,15 +12,16 @@ private protocol Runnable: Sendable {
 
 extension ProcessManagerRunner: Runnable {}
 extension GatewayRunner: Runnable {}
+extension InjectorRunner: Runnable {}
 
 /// A container for Songbird's core services, providing lifecycle management for the
-/// projection pipeline, process manager runners, and gateway runners.
+/// projection pipeline, process manager runners, gateway runners, and injector runners.
 ///
 /// `SongbirdServices` is a mutable struct (matching Hummingbird's `Router` pattern) that
 /// you configure before starting the application. Register projectors, process managers,
-/// and gateways, then pass it to a `ServiceGroup` or `Application` (via its `services`
-/// parameter). Gateways, process managers, and the projection pipeline all run concurrently
-/// in the task group.
+/// gateways, and injectors, then pass it to a `ServiceGroup` or `Application` (via its
+/// `services` parameter). Injectors, gateways, process managers, and the projection
+/// pipeline all run concurrently in the task group.
 ///
 /// ```swift
 /// var services = SongbirdServices(
@@ -32,6 +33,7 @@ extension GatewayRunner: Runnable {}
 /// services.registerProjector(balanceProjector)
 /// services.registerProcessManager(FulfillmentPM.self, tickInterval: .seconds(1))
 /// services.registerGateway(webhookNotifier, tickInterval: .seconds(1))
+/// services.registerInjector(githubPoller)
 ///
 /// let app = Application(router: router, services: [services])
 /// try await app.runService()
@@ -101,13 +103,27 @@ public struct SongbirdServices: Sendable {
         runners.append(runner)
     }
 
+    /// Registers an injector to run as a background event producer.
+    ///
+    /// The runner is created eagerly and executes in the task group alongside
+    /// the projection pipeline when `run()` is called.
+    public mutating func registerInjector<I: Injector>(
+        _ injector: I
+    ) {
+        let runner = InjectorRunner(
+            injector: injector,
+            store: eventStore
+        )
+        runners.append(runner)
+    }
+
     // MARK: - Lifecycle
 
-    /// Starts the projection pipeline and all registered runners (process managers and gateways).
+    /// Starts the projection pipeline and all registered runners (process managers, gateways, and injectors).
     ///
     /// This method blocks until cancelled. Cancellation propagates to all child tasks:
     /// - The pipeline is stopped via `pipeline.stop()`
-    /// - Process manager and gateway runners are cancelled (their subscription polling loop exits)
+    /// - Process manager, gateway, and injector runners are cancelled (their event loops exit)
     public func run() async throws {
         for projector in projectors {
             await projectionPipeline.register(projector)

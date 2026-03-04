@@ -19,6 +19,29 @@ private actor ServicesTestGateway: Gateway {
     }
 }
 
+private actor ServicesTestInjector: Injector {
+    let injectorId = "services-test-injector"
+
+    private let (stream, continuation) = AsyncThrowingStream<InboundEvent, Error>.makeStream()
+    private(set) var appendResults: [Result<RecordedEvent, any Error>] = []
+
+    nonisolated func events() -> AsyncThrowingStream<InboundEvent, Error> {
+        stream
+    }
+
+    nonisolated func yield(_ event: InboundEvent) {
+        continuation.yield(event)
+    }
+
+    nonisolated func finish() {
+        continuation.finish()
+    }
+
+    func didAppend(_ event: InboundEvent, result: Result<RecordedEvent, any Error>) async {
+        appendResults.append(result)
+    }
+}
+
 @Suite("SongbirdServices")
 struct SongbirdServicesTests {
     @Test func registerProjectorAndRunPipeline() async throws {
@@ -100,6 +123,48 @@ struct SongbirdServicesTests {
 
         serviceTask.cancel()
         // Should complete without hanging
+        try? await serviceTask.value
+    }
+
+    @Test func registerInjectorAndRun() async throws {
+        let store = InMemoryEventStore()
+        let pipeline = ProjectionPipeline()
+        let injector = ServicesTestInjector()
+
+        var services = SongbirdServices(
+            eventStore: store,
+            projectionPipeline: pipeline,
+            positionStore: InMemoryPositionStore(),
+            eventRegistry: EventTypeRegistry()
+        )
+        services.registerInjector(injector)
+
+        let serviceTask = Task { try await services.run() }
+
+        let inbound = InboundEvent(
+            event: ServicesTestEvent(),
+            stream: StreamName(category: "inbound-test", id: "1"),
+            metadata: EventMetadata()
+        )
+        injector.yield(inbound)
+
+        // Give the runner time to process the yielded event
+        try await Task.sleep(for: .milliseconds(100))
+
+        let storedEvents = try await store.readStream(
+            StreamName(category: "inbound-test", id: "1"),
+            from: 0,
+            maxCount: 10
+        )
+        #expect(storedEvents.count == 1)
+
+        let results = await injector.appendResults
+        #expect(results.count == 1)
+        if case .failure(let error) = results[0] {
+            Issue.record("Expected success but got failure: \(error)")
+        }
+
+        serviceTask.cancel()
         try? await serviceTask.value
     }
 }
