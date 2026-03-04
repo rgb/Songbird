@@ -182,6 +182,25 @@ struct ReadModelStoreTests {
         #expect(count == 3)
     }
 
+    @Test func rebuildProcessesMultipleBatches() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
+        let eventStore = InMemoryEventStore(registry: registry)
+
+        let meta = EventMetadata(traceId: "test")
+        let stream = StreamName(category: "item", id: "1")
+        for i in 1...5 {
+            _ = try await eventStore.append(TestEvent.itemAdded(name: "Item\(i)"), to: stream, metadata: meta, expectedVersion: nil)
+        }
+
+        let readModel = try ReadModelStore()
+        let projector = CountingProjector()
+        try await readModel.rebuild(from: eventStore, projectors: [projector], batchSize: 2)
+
+        let count = await projector.count
+        #expect(count == 5)
+    }
+
     @Test func rebuildWithNoEventsSucceeds() async throws {
         let eventStore = InMemoryEventStore()
         let readModel = try ReadModelStore()
