@@ -30,3 +30,26 @@ public func appendAndProject(
     await services.projectionPipeline.enqueue(recorded)
     return recorded
 }
+
+/// Executes a command via an `AggregateRepository` and enqueues all resulting events
+/// to the projection pipeline.
+@discardableResult
+public func executeAndProject<H: CommandHandler>(
+    _ command: H.Cmd,
+    on id: String,
+    metadata: EventMetadata,
+    using handler: H.Type,
+    repository: AggregateRepository<H.Agg>,
+    services: SongbirdServices
+) async throws -> [RecordedEvent] {
+    let recorded = try await repository.execute(
+        command,
+        on: id,
+        metadata: metadata,
+        using: handler
+    )
+    for event in recorded {
+        await services.projectionPipeline.enqueue(event)
+    }
+    return recorded
+}
