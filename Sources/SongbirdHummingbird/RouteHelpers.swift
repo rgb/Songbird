@@ -33,6 +33,19 @@ public func appendAndProject(
 
 /// Executes a command via an `AggregateRepository` and enqueues all resulting events
 /// to the projection pipeline.
+///
+/// This is the command-handling write operation for Songbird route handlers. It loads the
+/// aggregate, validates and executes the command (with optimistic concurrency), then hands
+/// the resulting events to the projection pipeline.
+///
+/// - Parameters:
+///   - command: The command to execute.
+///   - id: The aggregate entity ID.
+///   - metadata: Event metadata (trace ID, causation, etc.).
+///   - handler: The `CommandHandler` type that validates and produces events.
+///   - repository: The aggregate repository to load state and append events.
+///   - services: The `SongbirdServices` container.
+/// - Returns: The recorded events as persisted by the store.
 @discardableResult
 public func executeAndProject<H: CommandHandler>(
     _ command: H.Cmd,
