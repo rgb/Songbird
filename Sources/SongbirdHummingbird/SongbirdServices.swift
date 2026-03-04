@@ -14,11 +14,13 @@ extension ProcessManagerRunner: Runnable {}
 extension GatewayRunner: Runnable {}
 
 /// A container for Songbird's core services, providing lifecycle management for the
-/// projection pipeline and process manager runners.
+/// projection pipeline, process manager runners, and gateway runners.
 ///
 /// `SongbirdServices` is a mutable struct (matching Hummingbird's `Router` pattern) that
-/// you configure before starting the application. Register projectors and process managers,
-/// then pass it to a `ServiceGroup` or `Application` (via its `services` parameter).
+/// you configure before starting the application. Register projectors, process managers,
+/// and gateways, then pass it to a `ServiceGroup` or `Application` (via its `services`
+/// parameter). Gateways, process managers, and the projection pipeline all run concurrently
+/// in the task group.
 ///
 /// ```swift
 /// var services = SongbirdServices(
@@ -29,6 +31,7 @@ extension GatewayRunner: Runnable {}
 /// )
 /// services.registerProjector(balanceProjector)
 /// services.registerProcessManager(FulfillmentPM.self, tickInterval: .seconds(1))
+/// services.registerGateway(webhookNotifier, tickInterval: .seconds(1))
 ///
 /// let app = Application(router: router, services: [services])
 /// try await app.runService()
@@ -100,11 +103,11 @@ public struct SongbirdServices: Sendable {
 
     // MARK: - Lifecycle
 
-    /// Starts the projection pipeline and all registered process manager runners.
+    /// Starts the projection pipeline and all registered runners (process managers and gateways).
     ///
     /// This method blocks until cancelled. Cancellation propagates to all child tasks:
     /// - The pipeline is stopped via `pipeline.stop()`
-    /// - Process manager runners are cancelled (their subscription polling loop exits)
+    /// - Process manager and gateway runners are cancelled (their subscription polling loop exits)
     public func run() async throws {
         for projector in projectors {
             await projectionPipeline.register(projector)

@@ -4,7 +4,7 @@
 /// The runner:
 /// 1. Creates an `EventSubscription` for `G.categories` with `gateway.gatewayId` as subscriber ID
 /// 2. For each incoming event, calls `gateway.handle(event)`
-/// 3. Errors from `handle()` are logged but do not stop the subscription loop
+/// 3. Errors from `handle()` are swallowed and do not stop the subscription loop
 ///
 /// Position is persisted by the underlying `EventSubscription`, providing at-least-once delivery.
 /// Gateways must be idempotent since events may be redelivered after a crash.
@@ -60,8 +60,8 @@ public actor GatewayRunner<G: Gateway> {
             do {
                 try await gateway.handle(event)
             } catch {
-                // Gateway errors are logged but do not stop the subscription.
-                // The gateway is responsible for its own retry logic.
+                // Gateway errors are swallowed and do not stop the subscription.
+                // The gateway is responsible for its own retry/logging logic.
             }
         }
     }
