@@ -11,9 +11,11 @@ let package = Package(
         .library(name: "Songbird", targets: ["Songbird"]),
         .library(name: "SongbirdTesting", targets: ["SongbirdTesting"]),
         .library(name: "SongbirdSQLite", targets: ["SongbirdSQLite"]),
+        .library(name: "SongbirdHummingbird", targets: ["SongbirdHummingbird"]),
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", exact: "0.15.3"),
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
     ],
     targets: [
         // MARK: - Core
@@ -39,6 +41,16 @@ let package = Package(
             ]
         ),
 
+        // MARK: - Hummingbird Integration
+
+        .target(
+            name: "SongbirdHummingbird",
+            dependencies: [
+                "Songbird",
+                .product(name: "Hummingbird", package: "hummingbird"),
+            ]
+        ),
+
         // MARK: - Tests
 
         .testTarget(
@@ -54,6 +66,15 @@ let package = Package(
         .testTarget(
             name: "SongbirdSQLiteTests",
             dependencies: ["SongbirdSQLite", "SongbirdTesting"]
+        ),
+
+        .testTarget(
+            name: "SongbirdHummingbirdTests",
+            dependencies: [
+                "SongbirdHummingbird",
+                "SongbirdTesting",
+                .product(name: "HummingbirdTesting", package: "hummingbird"),
+            ]
         ),
     ]
 )
