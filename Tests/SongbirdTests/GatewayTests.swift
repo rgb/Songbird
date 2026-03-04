@@ -6,6 +6,7 @@ import Testing
 
 actor TestNotifier: Gateway {
     let gatewayId = "test-notifier"
+    static let categories = ["test"]
     private(set) var handledEvents: [RecordedEvent] = []
 
     func handle(_ event: RecordedEvent) async throws {
