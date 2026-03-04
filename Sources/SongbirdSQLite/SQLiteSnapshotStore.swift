@@ -35,7 +35,6 @@ public actor SQLiteSnapshotStore: SnapshotStore {
     private static func configurePragmas(_ db: Connection) throws {
         try db.execute("PRAGMA journal_mode = WAL")
         try db.execute("PRAGMA synchronous = NORMAL")
-        try db.execute("PRAGMA foreign_keys = ON")
     }
 
     // MARK: - Migrations

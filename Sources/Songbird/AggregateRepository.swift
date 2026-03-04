@@ -65,8 +65,12 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         // Auto-snapshot based on policy
         if case .everyNEvents(let n) = snapshotPolicy, let snapshotStore, !recorded.isEmpty {
             let newVersion = version + Int64(recorded.count)
-            // Snapshot when the total event count (newVersion + 1) is a multiple of n
-            if (newVersion + 1) % Int64(n) == 0 {
+            // Bucket comparison: snapshot when the new total event count crosses
+            // an N-event boundary. This handles multi-event commands correctly —
+            // modulo would miss boundaries when commands skip over them.
+            let oldBucket = (version + 1) / Int64(n)
+            let newBucket = (newVersion + 1) / Int64(n)
+            if newBucket > oldBucket {
                 var snapshotState = state
                 for event in events {
                     snapshotState = A.apply(snapshotState, event)

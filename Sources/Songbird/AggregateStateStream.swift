@@ -9,7 +9,10 @@ import Foundation
 /// the stream polls for new events from the last known position, applies each one, and yields
 /// the updated state for every event.
 ///
-/// The stream does not persist position -- it always folds from the beginning on creation.
+/// When an optional `SnapshotStore` is provided, the initial fold loads the latest snapshot
+/// and folds only events after the snapshot version — skipping full replay. Without a snapshot
+/// store, the stream folds from the beginning on creation.
+///
 /// This makes it suitable for live UI updates, in-memory caches, and reactive projections.
 ///
 /// Usage:

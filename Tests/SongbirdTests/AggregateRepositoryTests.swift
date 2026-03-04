@@ -365,6 +365,49 @@ struct AggregateRepositoryTests {
         #expect(snapshot?.version == 1)
     }
 
+    @Test func executeAutoSnapshotsWithMultiEventCommand() async throws {
+        // A multi-event command that skips over the N-event boundary should still trigger a snapshot
+        enum BulkDepositHandler: CommandHandler {
+            typealias Agg = BankAccountAggregate
+            typealias Cmd = Deposit
+
+            static func handle(
+                _ command: Deposit,
+                given state: BankAccountAggregate.State
+            ) throws(BankAccountAggregate.Failure) -> [BankAccountEvent] {
+                guard state.isOpen else { throw .notOpen }
+                return [.deposited(amount: command.amount), .deposited(amount: command.amount)]
+            }
+        }
+
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore(registry: registry)
+        let snapshotStore = InMemorySnapshotStore()
+
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            snapshotStore: snapshotStore,
+            snapshotPolicy: .everyNEvents(3)
+        )
+
+        let stream = StreamName(category: "account", id: "acct-1")
+
+        // Event at position 0: open (1 total)
+        _ = try await repo.execute(OpenAccount(name: "Alice"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
+        var snapshot: (state: BankAccountAggregate.State, version: Int64)? =
+            try await snapshotStore.load(for: stream)
+        #expect(snapshot == nil)
+
+        // Events at positions 1 and 2: bulk deposit (3 total) — crosses the 3-event boundary
+        _ = try await repo.execute(Deposit(amount: 50), on: "acct-1", metadata: meta, using: BulkDepositHandler.self)
+        snapshot = try await snapshotStore.load(for: stream)
+        #expect(snapshot != nil)
+        #expect(snapshot?.state == BankAccountAggregate.State(isOpen: true, balance: 100, name: "Alice"))
+        #expect(snapshot?.version == 2)
+    }
+
     @Test func executeWithPolicyNoneDoesNotSnapshot() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
