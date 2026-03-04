@@ -11,6 +11,7 @@ private protocol Runnable: Sendable {
 }
 
 extension ProcessManagerRunner: Runnable {}
+extension GatewayRunner: Runnable {}
 
 /// A container for Songbird's core services, providing lifecycle management for the
 /// projection pipeline and process manager runners.
@@ -70,6 +71,25 @@ public struct SongbirdServices: Sendable {
         tickInterval: Duration = .milliseconds(100)
     ) {
         let runner = ProcessManagerRunner<PM>(
+            store: eventStore,
+            positionStore: positionStore,
+            batchSize: batchSize,
+            tickInterval: tickInterval
+        )
+        runners.append(runner)
+    }
+
+    /// Registers a gateway to run as a background subscription.
+    ///
+    /// The runner is created eagerly and executes in the task group alongside
+    /// the projection pipeline when `run()` is called.
+    public mutating func registerGateway<G: Gateway>(
+        _ gateway: G,
+        batchSize: Int = 100,
+        tickInterval: Duration = .milliseconds(100)
+    ) {
+        let runner = GatewayRunner(
+            gateway: gateway,
             store: eventStore,
             positionStore: positionStore,
             batchSize: batchSize,
