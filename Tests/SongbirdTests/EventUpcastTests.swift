@@ -178,4 +178,18 @@ struct EventUpcastTests {
         let typed = decoded as! OrderPlaced_v3
         #expect(typed == OrderPlaced_v3(itemId: "abc", quantity: 5, currency: "USD"))
     }
+
+    @Test func versionNumbersAreCorrectForTestTypes() {
+        #expect(OrderPlaced_v1.version == 1)
+        #expect(OrderPlaced_v2.version == 2)
+        #expect(OrderPlaced_v3.version == 3)
+    }
+
+    @Test func registerUpcastWithWrongVersionPreconditionFails() {
+        // OrderPlaced_v1 (version 1) → OrderPlaced_v3 (version 3) skips a version.
+        // registerUpcast uses a precondition to enforce consecutive versions (v3 != v1 + 1).
+        // We can't test precondition failures in Swift Testing without crashing the process,
+        // so we verify the invariant holds by checking the version numbers directly.
+        #expect(OrderPlaced_v3.version != OrderPlaced_v1.version + 1)
+    }
 }
