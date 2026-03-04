@@ -4,75 +4,14 @@ import Testing
 @testable import Songbird
 @testable import SongbirdTesting
 
-// Test projector that records applied events
-actor RecordingProjector: Projector {
-    let projectorId: String
-    private(set) var appliedEvents: [RecordedEvent] = []
+/// Minimal event for pipeline tests. The `eventType` can be customized to test
+/// type-based filtering without needing a full domain event enum.
+private struct PipelineTestEvent: Event {
+    let eventType: String
 
-    init(id: String = "recording") {
-        self.projectorId = id
+    init(_ type: String = "TestEvent") {
+        self.eventType = type
     }
-
-    func apply(_ event: RecordedEvent) async throws {
-        appliedEvents.append(event)
-    }
-}
-
-// Test projector that only handles specific event types
-actor FilteringProjector: Projector {
-    let projectorId = "filtering"
-    let acceptedTypes: Set<String>
-    private(set) var appliedEvents: [RecordedEvent] = []
-
-    init(acceptedTypes: Set<String>) {
-        self.acceptedTypes = acceptedTypes
-    }
-
-    func apply(_ event: RecordedEvent) async throws {
-        if acceptedTypes.contains(event.eventType) {
-            appliedEvents.append(event)
-        }
-    }
-}
-
-// Test projector that throws on specific events
-actor FailingProjector: Projector {
-    let projectorId = "failing"
-    let failOnType: String
-    private(set) var appliedEvents: [RecordedEvent] = []
-
-    init(failOnType: String) {
-        self.failOnType = failOnType
-    }
-
-    func apply(_ event: RecordedEvent) async throws {
-        if event.eventType == failOnType {
-            throw ProjectorTestError.intentionalFailure
-        }
-        appliedEvents.append(event)
-    }
-}
-
-enum ProjectorTestError: Error {
-    case intentionalFailure
-}
-
-// Helper to create a RecordedEvent
-func makeRecordedEvent(
-    globalPosition: Int64,
-    eventType: String = "TestEvent",
-    streamName: StreamName = StreamName(category: "test", id: "1")
-) -> RecordedEvent {
-    RecordedEvent(
-        id: UUID(),
-        streamName: streamName,
-        position: globalPosition,
-        globalPosition: globalPosition,
-        eventType: eventType,
-        data: Data("{}".utf8),
-        metadata: EventMetadata(),
-        timestamp: Date()
-    )
 }
 
 @Suite("ProjectionPipeline")
@@ -87,8 +26,8 @@ struct ProjectionPipelineTests {
 
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
         try await pipeline.waitForIdle()
 
         let appliedCount = await projector.appliedEvents.count
@@ -107,7 +46,7 @@ struct ProjectionPipelineTests {
 
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
         try await pipeline.waitForIdle()
 
         let p1Count = await p1.appliedEvents.count
@@ -128,9 +67,9 @@ struct ProjectionPipelineTests {
 
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0, eventType: "Deposited"))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1, eventType: "Withdrawn"))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2, eventType: "Deposited"))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Deposited"), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Withdrawn"), globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Deposited"), globalPosition: 2))
         try await pipeline.waitForIdle()
 
         let allCount = await allEvents.appliedEvents.count
@@ -153,9 +92,9 @@ struct ProjectionPipelineTests {
 
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0, eventType: "Good"))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1, eventType: "Bad"))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2, eventType: "Good"))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Good"), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Bad"), globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent("Good"), globalPosition: 2))
         try await pipeline.waitForIdle()
 
         // Recording projector got all 3 events despite failing projector throwing on "Bad"
@@ -176,7 +115,7 @@ struct ProjectionPipelineTests {
         await pipeline.register(RecordingProjector())
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
         try await pipeline.waitForIdle()
 
         // This should return immediately since position 0 is already projected
@@ -211,9 +150,9 @@ struct ProjectionPipelineTests {
         let initialPos = await pipeline.currentPosition
         #expect(initialPos == -1)
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 2))
         try await pipeline.waitForIdle()
 
         let finalPos = await pipeline.currentPosition
@@ -230,7 +169,7 @@ struct ProjectionPipelineTests {
         await pipeline.register(RecordingProjector())
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
         try await pipeline.waitForIdle()
 
         await pipeline.stop()
@@ -266,13 +205,13 @@ struct ProjectionPipelineTests {
 
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
         try await pipeline.waitForIdle()
         await pipeline.stop()
         await task.value
 
         // Enqueue after stop -- should be silently ignored
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
         let count = await projector.appliedEvents.count
         #expect(count == 1)
     }
@@ -292,12 +231,12 @@ struct ProjectionPipelineTests {
         // Give waiters time to register
         try await Task.sleep(for: .milliseconds(50))
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
         try await waiter1.value // first waiter satisfied at position 1
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 3))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 2))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 3))
         try await waiter2.value // second waiter satisfied at position 3
 
         await pipeline.stop()
@@ -315,9 +254,9 @@ struct ProjectionPipelineTests {
 
         try await Task.sleep(for: .milliseconds(50))
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 2))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 2))
 
         // Waiter should be satisfied at exactly position 2
         try await waiterTask.value
@@ -335,14 +274,14 @@ struct ProjectionPipelineTests {
         await pipeline.register(earlyProjector)
         let task = Task { await pipeline.run() }
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 0))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 0))
         try await pipeline.waitForIdle()
 
         // Register a late projector after run has started
         let lateProjector = RecordingProjector(id: "late")
         await pipeline.register(lateProjector)
 
-        await pipeline.enqueue(makeRecordedEvent(globalPosition: 1))
+        await pipeline.enqueue(try RecordedEvent(event: PipelineTestEvent(), globalPosition: 1))
         try await pipeline.waitForIdle()
 
         let earlyCount = await earlyProjector.appliedEvents.count
