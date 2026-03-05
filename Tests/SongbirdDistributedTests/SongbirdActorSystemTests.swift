@@ -1,0 +1,92 @@
+import Distributed
+import Foundation
+import Testing
+@testable import SongbirdDistributed
+
+// A simple distributed actor for testing
+distributed actor Greeter {
+    typealias ActorSystem = SongbirdActorSystem
+
+    distributed func greet(name: String) -> String {
+        "Hello, \(name)!"
+    }
+
+    distributed func add(a: Int, b: Int) -> Int {
+        a + b
+    }
+}
+
+@Suite("SongbirdActorSystem")
+struct SongbirdActorSystemTests {
+    @Test func localActorCallWorks() async throws {
+        let system = SongbirdActorSystem(processName: "test")
+        let greeter = Greeter(actorSystem: system)
+        let result = try await greeter.greet(name: "World")
+        #expect(result == "Hello, World!")
+    }
+
+    @Test func remoteActorCallOverSocket() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        // Worker side
+        let workerSystem = SongbirdActorSystem(processName: "worker")
+        try await workerSystem.startServer(socketPath: socketPath)
+        defer { Task { try await workerSystem.shutdown() } }
+
+        let greeter = Greeter(actorSystem: workerSystem)
+
+        // Client side
+        let clientSystem = SongbirdActorSystem(processName: "gateway")
+        try await clientSystem.connect(processName: "worker", socketPath: socketPath)
+        defer { Task { try await clientSystem.shutdown() } }
+
+        // Resolve using the greeter's actual auto-assigned actor name
+        let remoteId = SongbirdActorID(processName: "worker", actorName: greeter.id.actorName)
+        let remoteGreeter = try Greeter.resolve(id: remoteId, using: clientSystem)
+        let result = try await remoteGreeter.greet(name: "Alice")
+        #expect(result == "Hello, Alice!")
+    }
+
+    @Test func multipleArgumentsWork() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let workerSystem = SongbirdActorSystem(processName: "worker")
+        try await workerSystem.startServer(socketPath: socketPath)
+        defer { Task { try await workerSystem.shutdown() } }
+
+        let greeter = Greeter(actorSystem: workerSystem)
+
+        let clientSystem = SongbirdActorSystem(processName: "gateway")
+        try await clientSystem.connect(processName: "worker", socketPath: socketPath)
+        defer { Task { try await clientSystem.shutdown() } }
+
+        let remote = try Greeter.resolve(
+            id: SongbirdActorID(processName: "worker", actorName: greeter.id.actorName),
+            using: clientSystem
+        )
+        let result = try await remote.add(a: 3, b: 4)
+        #expect(result == 7)
+    }
+
+    @Test func unresolvedActorThrowsError() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let workerSystem = SongbirdActorSystem(processName: "worker")
+        try await workerSystem.startServer(socketPath: socketPath)
+        defer { Task { try await workerSystem.shutdown() } }
+
+        let clientSystem = SongbirdActorSystem(processName: "gateway")
+        try await clientSystem.connect(processName: "worker", socketPath: socketPath)
+        defer { Task { try await clientSystem.shutdown() } }
+
+        let fakeId = SongbirdActorID(processName: "worker", actorName: "nonexistent")
+        let remote = try Greeter.resolve(id: fakeId, using: clientSystem)
+
+        await #expect(throws: SongbirdDistributedError.self) {
+            _ = try await remote.greet(name: "Fail")
+        }
+    }
+}
