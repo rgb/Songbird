@@ -4,26 +4,26 @@ import Foundation
 ///
 /// All messages are length-prefixed (4-byte big-endian UInt32) followed by a JSON body.
 /// Request/response pairs are matched by `requestId`.
-enum WireMessage: Codable {
+public enum WireMessage: Codable, Sendable {
     case call(Call)
     case result(Result)
     case error(ErrorResult)
 
-    struct Call: Codable {
-        let requestId: UInt64
-        let actorName: String
-        let targetName: String
-        let arguments: Data
+    public struct Call: Codable, Sendable {
+        public let requestId: UInt64
+        public let actorName: String
+        public let targetName: String
+        public let arguments: Data
     }
 
-    struct Result: Codable {
-        let requestId: UInt64
-        let value: Data
+    public struct Result: Codable, Sendable {
+        public let requestId: UInt64
+        public let value: Data
     }
 
-    struct ErrorResult: Codable {
-        let requestId: UInt64
-        let message: String
+    public struct ErrorResult: Codable, Sendable {
+        public let requestId: UInt64
+        public let message: String
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -34,7 +34,7 @@ enum WireMessage: Codable {
         case call, result, error
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .call(let call):
@@ -49,7 +49,7 @@ enum WireMessage: Codable {
         }
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(MessageType.self, forKey: .type)
         switch type {

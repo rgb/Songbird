@@ -1,0 +1,219 @@
+import Foundation
+import NIOCore
+import NIOPosix
+
+// MARK: - Message Handler Protocol
+
+/// Protocol for handling incoming wire messages (used by the actor system).
+public protocol WireMessageHandler: Sendable {
+    func handleMessage(_ message: WireMessage, channel: any Channel) async
+}
+
+// MARK: - Transport Server
+
+/// A NIO-based Unix domain socket server that accepts connections and dispatches
+/// incoming `WireMessage` calls to a `WireMessageHandler`.
+public final class TransportServer: Sendable {
+    private let group: MultiThreadedEventLoopGroup
+    private let handler: any WireMessageHandler
+    nonisolated(unsafe) private var serverChannel: (any Channel)?
+    private let socketPath: String
+
+    public init(socketPath: String, handler: any WireMessageHandler) {
+        self.socketPath = socketPath
+        self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.handler = handler
+    }
+
+    /// Starts listening on the Unix domain socket.
+    public func start() async throws {
+        // Remove stale socket file if it exists
+        try? FileManager.default.removeItem(atPath: socketPath)
+
+        let handler = self.handler
+        let bootstrap = ServerBootstrap(group: group)
+            .serverChannelOption(.backlog, value: 256)
+            .childChannelInitializer { channel in
+                channel.pipeline.addHandler(ByteToMessageHandler(MessageFrameDecoder())).flatMap {
+                    channel.pipeline.addHandler(MessageFrameEncoder())
+                }.flatMap {
+                    channel.pipeline.addHandler(ServerInboundHandler(messageHandler: handler))
+                }
+            }
+
+        self.serverChannel = try await bootstrap.bind(unixDomainSocketPath: socketPath).get()
+    }
+
+    /// Stops the server and cleans up the socket file.
+    public func stop() async throws {
+        try await serverChannel?.close()
+        try? FileManager.default.removeItem(atPath: socketPath)
+        try await group.shutdownGracefully()
+    }
+}
+
+// MARK: - Transport Client
+
+/// A NIO-based Unix domain socket client that connects to a server and sends
+/// `WireMessage` calls, awaiting responses via continuations.
+public actor TransportClient {
+    private let group: MultiThreadedEventLoopGroup
+    private var channel: (any Channel)?
+    private var pendingCalls: [UInt64: CheckedContinuation<WireMessage, any Error>] = [:]
+    private var nextRequestId: UInt64 = 0
+
+    public init() {
+        self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    }
+
+    /// Connects to a Unix domain socket server.
+    public func connect(socketPath: String) async throws {
+        let clientHandler = ClientInboundHandler(client: self)
+        let bootstrap = ClientBootstrap(group: group)
+            .channelInitializer { channel in
+                channel.pipeline.addHandler(ByteToMessageHandler(MessageFrameDecoder())).flatMap {
+                    channel.pipeline.addHandler(MessageFrameEncoder())
+                }.flatMap {
+                    channel.pipeline.addHandler(clientHandler)
+                }
+            }
+
+        self.channel = try await bootstrap.connect(unixDomainSocketPath: socketPath).get()
+    }
+
+    /// Sends a call and waits for the response.
+    public func call(actorName: String, targetName: String, arguments: Data) async throws -> WireMessage {
+        guard let channel else {
+            throw SongbirdDistributedError.notConnected("no connection")
+        }
+
+        let requestId = nextRequestId
+        nextRequestId += 1
+
+        let message = WireMessage.call(.init(
+            requestId: requestId,
+            actorName: actorName,
+            targetName: targetName,
+            arguments: arguments
+        ))
+
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(message)
+        } catch {
+            throw SongbirdDistributedError.connectionFailed("Failed to encode message: \(error)")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            pendingCalls[requestId] = continuation
+            var buffer = channel.allocator.buffer(capacity: data.count)
+            buffer.writeBytes(data)
+            channel.writeAndFlush(buffer, promise: nil)
+        }
+    }
+
+    /// Called by the inbound handler when a response arrives.
+    func receiveResponse(_ message: WireMessage) {
+        let requestId: UInt64
+        switch message {
+        case .result(let r): requestId = r.requestId
+        case .error(let e): requestId = e.requestId
+        case .call: return  // Clients don't receive calls
+        }
+
+        if let continuation = pendingCalls.removeValue(forKey: requestId) {
+            continuation.resume(returning: message)
+        }
+    }
+
+    /// Disconnects from the server.
+    public func disconnect() async throws {
+        try await channel?.close()
+        try await group.shutdownGracefully()
+    }
+}
+
+// MARK: - NIO Handlers
+
+/// Length-prefixed frame decoder: reads 4-byte big-endian length + payload.
+final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
+    typealias InboundOut = ByteBuffer
+
+    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        guard buffer.readableBytes >= 4 else { return .needMoreData }
+
+        let lengthIndex = buffer.readerIndex
+        guard let length = buffer.getInteger(at: lengthIndex, as: UInt32.self) else {
+            return .needMoreData
+        }
+
+        let totalLength = 4 + Int(length)
+        guard buffer.readableBytes >= totalLength else { return .needMoreData }
+
+        buffer.moveReaderIndex(forwardBy: 4)
+        guard let payload = buffer.readSlice(length: Int(length)) else {
+            return .needMoreData
+        }
+
+        context.fireChannelRead(NIOAny(payload))
+        return .continue
+    }
+}
+
+/// Length-prefixed frame encoder: writes 4-byte big-endian length + payload.
+final class MessageFrameEncoder: ChannelOutboundHandler, @unchecked Sendable {
+    typealias OutboundIn = ByteBuffer
+    typealias OutboundOut = ByteBuffer
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let payload = unwrapOutboundIn(data)
+        var frame = context.channel.allocator.buffer(capacity: 4 + payload.readableBytes)
+        frame.writeInteger(UInt32(payload.readableBytes))
+        frame.writeImmutableBuffer(payload)
+        context.write(NIOAny(frame), promise: promise)
+    }
+}
+
+/// Server-side handler: decodes incoming messages and dispatches to the WireMessageHandler.
+final class ServerInboundHandler: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = ByteBuffer
+
+    let messageHandler: any WireMessageHandler
+
+    init(messageHandler: any WireMessageHandler) {
+        self.messageHandler = messageHandler
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var buffer = unwrapInboundIn(data)
+        guard let bytes = buffer.readBytes(length: buffer.readableBytes) else { return }
+        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else { return }
+
+        let channel = context.channel
+        let handler = messageHandler
+        Task {
+            await handler.handleMessage(message, channel: channel)
+        }
+    }
+}
+
+/// Client-side handler: receives responses and forwards them to the TransportClient actor.
+final class ClientInboundHandler: ChannelInboundHandler, @unchecked Sendable {
+    typealias InboundIn = ByteBuffer
+
+    let client: TransportClient
+
+    init(client: TransportClient) {
+        self.client = client
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var buffer = unwrapInboundIn(data)
+        guard let bytes = buffer.readBytes(length: buffer.readableBytes) else { return }
+        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else { return }
+
+        Task {
+            await client.receiveResponse(message)
+        }
+    }
+}
