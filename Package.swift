@@ -14,12 +14,15 @@ let package = Package(
         .library(name: "SongbirdSmew", targets: ["SongbirdSmew"]),
         .library(name: "SongbirdHummingbird", targets: ["SongbirdHummingbird"]),
         .library(name: "SongbirdDistributed", targets: ["SongbirdDistributed"]),
+        .library(name: "SongbirdPostgres", targets: ["SongbirdPostgres"]),
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", exact: "0.15.3"),
         .package(url: "git@github.com:rgb/smew.git", exact: "0.34.4"),
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
+        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.29.0"),
+        .package(url: "https://github.com/hummingbird-project/postgres-migrations.git", from: "1.1.0"),
     ],
     targets: [
         // MARK: - Core
@@ -76,6 +79,17 @@ let package = Package(
             ]
         ),
 
+        // MARK: - Postgres
+
+        .target(
+            name: "SongbirdPostgres",
+            dependencies: [
+                "Songbird",
+                .product(name: "PostgresNIO", package: "postgres-nio"),
+                .product(name: "PostgresMigrations", package: "postgres-migrations"),
+            ]
+        ),
+
         // MARK: - Tests
 
         .testTarget(
@@ -91,6 +105,11 @@ let package = Package(
         .testTarget(
             name: "SongbirdSQLiteTests",
             dependencies: ["SongbirdSQLite", "SongbirdTesting"]
+        ),
+
+        .testTarget(
+            name: "SongbirdPostgresTests",
+            dependencies: ["SongbirdPostgres", "SongbirdTesting"]
         ),
 
         .testTarget(
