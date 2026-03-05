@@ -110,7 +110,7 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
     }
 
     public func resignID(_ id: SongbirdActorID) {
-        localActors.withLock { $0.removeValue(forKey: id.actorName) }
+        localActors.withLock { _ = $0.removeValue(forKey: id.actorName) }
     }
 
     public func makeInvocationEncoder() -> SongbirdInvocationEncoder {
