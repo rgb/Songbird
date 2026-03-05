@@ -1,3 +1,0 @@
-module InMemoryTracing {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InMemoryTracing.build/include/InMemoryTracing-Swift.h"
-}

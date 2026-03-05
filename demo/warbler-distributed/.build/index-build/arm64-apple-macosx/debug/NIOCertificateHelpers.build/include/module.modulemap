@@ -1,3 +1,0 @@
-module NIOCertificateHelpers {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/NIOCertificateHelpers.build/include/NIOCertificateHelpers-Swift.h"
-}

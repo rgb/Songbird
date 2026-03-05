@@ -1,3 +1,0 @@
-module Logging {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Logging.build/include/Logging-Swift.h"
-}

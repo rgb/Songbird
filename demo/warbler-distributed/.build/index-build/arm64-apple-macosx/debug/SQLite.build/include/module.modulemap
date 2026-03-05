@@ -1,3 +1,0 @@
-module SQLite {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SQLite.build/include/SQLite-Swift.h"
-}

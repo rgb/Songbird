@@ -1,4 +1,0 @@
-module CNIODarwin {
-    umbrella header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-nio/Sources/CNIODarwin/include/CNIODarwin.h"
-    export *
-}

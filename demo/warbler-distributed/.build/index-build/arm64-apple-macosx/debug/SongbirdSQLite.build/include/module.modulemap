@@ -1,3 +1,0 @@
-module SongbirdSQLite {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdSQLite.build/include/SongbirdSQLite-Swift.h"
-}

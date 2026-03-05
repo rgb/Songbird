@@ -1,3 +1,0 @@
-module Tracing {
-    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Tracing.build/include/Tracing-Swift.h"
-}

@@ -1,4 +1,0 @@
-module CNIOExtrasZlib {
-    umbrella header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-nio-extras/Sources/CNIOExtrasZlib/include/CNIOExtrasZlib.h"
-    export *
-}
