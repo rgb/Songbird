@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-service-lifecycle/Sources/UnixSignals/UnixSignal.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignal.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignal.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignal~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignal.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignal.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-service-lifecycle/Sources/UnixSignals/UnixSignalsSequence.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignalsSequence.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignalsSequence.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignalsSequence~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignalsSequence.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/UnixSignals.build/UnixSignalsSequence.dia"
+  }
+}

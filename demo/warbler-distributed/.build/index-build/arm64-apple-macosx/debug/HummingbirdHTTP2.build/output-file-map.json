@@ -1,0 +1,75 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/Exports.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/Exports.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/Exports.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/Exports~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/Exports.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/Exports.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2Channel+ConfigReader.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel+ConfigReader.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel+ConfigReader.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel+ConfigReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel+ConfigReader.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel+ConfigReader.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2Channel.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2Channel.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2ServerConnectionManager+StateMachine.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager+StateMachine.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager+StateMachine.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager+StateMachine~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager+StateMachine.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager+StateMachine.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2ServerConnectionManager.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2ServerConnectionManager.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2StreamChannel.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2StreamChannel.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2StreamChannel.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2StreamChannel~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2StreamChannel.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2StreamChannel.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTP2UpgradeChannel.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2UpgradeChannel.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2UpgradeChannel.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2UpgradeChannel~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2UpgradeChannel.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTP2UpgradeChannel.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/HTTPServerBuilder+http2.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTPServerBuilder+http2.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTPServerBuilder+http2.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTPServerBuilder+http2~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTPServerBuilder+http2.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/HTTPServerBuilder+http2.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/TLSChannelConfiguration+ConfigReader.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration+ConfigReader.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration+ConfigReader.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration+ConfigReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration+ConfigReader.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration+ConfigReader.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/HummingbirdHTTP2/TLSChannelConfiguration.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdHTTP2.build/TLSChannelConfiguration.dia"
+  }
+}

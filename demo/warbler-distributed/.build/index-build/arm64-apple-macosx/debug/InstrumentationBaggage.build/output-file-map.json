@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-service-context/Sources/InstrumentationBaggage/CompatibilityShims.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/CompatibilityShims.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/CompatibilityShims.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/CompatibilityShims~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/CompatibilityShims.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/InstrumentationBaggage.build/CompatibilityShims.dia"
+  }
+}

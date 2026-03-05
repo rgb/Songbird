@@ -1,0 +1,180 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Aggregate.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Aggregate.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Aggregate.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Aggregate~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Aggregate.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Aggregate.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/AggregateRepository.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateRepository.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateRepository.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateRepository~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateRepository.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateRepository.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/AggregateStateStream.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateStateStream.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateStateStream.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateStateStream~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateStateStream.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/AggregateStateStream.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Command.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Command.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Command.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Command~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Command.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Command.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/CommandHandler.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/CommandHandler.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/CommandHandler.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/CommandHandler~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/CommandHandler.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/CommandHandler.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Event.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Event.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Event.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Event~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Event.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Event.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/EventReaction.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventReaction.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventReaction.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventReaction~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventReaction.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventReaction.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/EventStore.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventStore.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventStore.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventStore.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventStore.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/EventSubscription.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventSubscription.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventSubscription.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventSubscription~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventSubscription.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventSubscription.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/EventTypeRegistry.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventTypeRegistry.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventTypeRegistry.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventTypeRegistry~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventTypeRegistry.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventTypeRegistry.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/EventUpcast.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventUpcast.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventUpcast.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventUpcast~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventUpcast.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/EventUpcast.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Gateway.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Gateway.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Gateway.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Gateway~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Gateway.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Gateway.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/GatewayRunner.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/GatewayRunner.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/GatewayRunner.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/GatewayRunner~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/GatewayRunner.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/GatewayRunner.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Injector.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Injector.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Injector.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Injector~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Injector.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Injector.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/InjectorRunner.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/InjectorRunner.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/InjectorRunner.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/InjectorRunner~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/InjectorRunner.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/InjectorRunner.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Message.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Message.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Message.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Message~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Message.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Message.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/PositionStore.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/PositionStore.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/PositionStore.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/PositionStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/PositionStore.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/PositionStore.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/ProcessManager.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManager.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManager.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManager.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManager.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/ProcessManagerRunner.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManagerRunner.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManagerRunner.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManagerRunner~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManagerRunner.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessManagerRunner.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/ProcessStateStream.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessStateStream.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessStateStream.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessStateStream~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessStateStream.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProcessStateStream.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/ProjectionPipeline.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProjectionPipeline.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProjectionPipeline.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProjectionPipeline~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProjectionPipeline.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/ProjectionPipeline.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/Projector.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Projector.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Projector.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Projector~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Projector.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/Projector.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/SnapshotStore.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/SnapshotStore.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/SnapshotStore.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/SnapshotStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/SnapshotStore.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/SnapshotStore.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/StreamName.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamName.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamName.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamName~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamName.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamName.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/Songbird/StreamSubscription.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamSubscription.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamSubscription.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamSubscription~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamSubscription.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/Songbird.build/StreamSubscription.dia"
+  }
+}

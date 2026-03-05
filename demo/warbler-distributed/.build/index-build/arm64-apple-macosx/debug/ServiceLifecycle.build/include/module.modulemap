@@ -1,0 +1,3 @@
+module ServiceLifecycle {
+    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/ServiceLifecycle.build/include/ServiceLifecycle-Swift.h"
+}

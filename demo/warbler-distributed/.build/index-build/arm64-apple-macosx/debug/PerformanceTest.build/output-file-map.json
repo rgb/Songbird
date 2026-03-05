@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/hummingbird/Sources/PerformanceTest/main.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/main.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/main.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/main.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/PerformanceTest.build/main.dia"
+  }
+}

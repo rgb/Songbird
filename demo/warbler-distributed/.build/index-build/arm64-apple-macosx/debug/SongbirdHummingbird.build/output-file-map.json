@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/Sources/SongbirdHummingbird/ProjectionFlushMiddleware.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/ProjectionFlushMiddleware.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/ProjectionFlushMiddleware.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/ProjectionFlushMiddleware~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/ProjectionFlushMiddleware.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/ProjectionFlushMiddleware.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/SongbirdHummingbird/RequestIdMiddleware.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RequestIdMiddleware.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RequestIdMiddleware.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RequestIdMiddleware~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RequestIdMiddleware.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RequestIdMiddleware.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/SongbirdHummingbird/RouteHelpers.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RouteHelpers.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RouteHelpers.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RouteHelpers~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RouteHelpers.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/RouteHelpers.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/SongbirdHummingbird/SongbirdRequestContext.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdRequestContext.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdRequestContext.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdRequestContext~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdRequestContext.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdRequestContext.dia"
+  },
+  "/Users/greg/Development/Songbird/Sources/SongbirdHummingbird/SongbirdServices.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdServices.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdServices.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdServices~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdServices.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdHummingbird.build/SongbirdServices.dia"
+  }
+}

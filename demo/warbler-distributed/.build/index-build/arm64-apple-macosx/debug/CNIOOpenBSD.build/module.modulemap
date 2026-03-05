@@ -1,0 +1,4 @@
+module CNIOOpenBSD {
+    umbrella header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/checkouts/swift-nio/Sources/CNIOOpenBSD/include/CNIOOpenBSD.h"
+    export *
+}

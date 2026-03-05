@@ -7,6 +7,12 @@ let package = Package(
     platforms: [
         .macOS(.v14),
     ],
+    products: [
+        .library(name: "WarblerIdentity", targets: ["WarblerIdentity"]),
+        .library(name: "WarblerCatalog", targets: ["WarblerCatalog"]),
+        .library(name: "WarblerSubscriptions", targets: ["WarblerSubscriptions"]),
+        .library(name: "WarblerAnalytics", targets: ["WarblerAnalytics"]),
+    ],
     dependencies: [
         .package(name: "Songbird", path: "../../"),
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),

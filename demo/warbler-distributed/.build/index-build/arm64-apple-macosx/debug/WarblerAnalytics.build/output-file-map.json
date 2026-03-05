@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/AnalyticsEvent.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/AnalyticsEvent.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/AnalyticsEvent.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/AnalyticsEvent~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/AnalyticsEvent.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/AnalyticsEvent.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/PlaybackAnalyticsProjector.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackAnalyticsProjector.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackAnalyticsProjector.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackAnalyticsProjector~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackAnalyticsProjector.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackAnalyticsProjector.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/PlaybackInjector.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackInjector.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackInjector.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackInjector~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackInjector.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/PlaybackInjector.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/ViewCountAggregate.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountAggregate.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountAggregate.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountAggregate~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountAggregate.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountAggregate.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/ViewCountEvent.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountEvent.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountEvent.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountEvent~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountEvent.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/ViewCountEvent.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerAnalytics/WarblerAnalytics.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/WarblerAnalytics.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/WarblerAnalytics.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/WarblerAnalytics~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/WarblerAnalytics.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerAnalytics.build/WarblerAnalytics.dia"
+  }
+}

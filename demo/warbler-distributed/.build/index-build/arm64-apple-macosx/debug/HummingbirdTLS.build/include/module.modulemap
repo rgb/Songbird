@@ -1,0 +1,3 @@
+module HummingbirdTLS {
+    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HummingbirdTLS.build/include/HummingbirdTLS-Swift.h"
+}

@@ -1,0 +1,3 @@
+module SongbirdDistributed {
+    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/SongbirdDistributed.build/include/SongbirdDistributed-Swift.h"
+}

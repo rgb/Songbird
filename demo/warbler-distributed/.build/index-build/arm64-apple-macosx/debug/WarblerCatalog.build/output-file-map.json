@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/master.swiftdeps"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/VideoAggregate.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoAggregate.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoAggregate.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoAggregate~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoAggregate.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoAggregate.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/VideoCatalogProjector.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCatalogProjector.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCatalogProjector.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCatalogProjector~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCatalogProjector.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCatalogProjector.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/VideoCommands.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCommands.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCommands.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCommands~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCommands.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoCommands.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/VideoEvent.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoEvent.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoEvent.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoEvent~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoEvent.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoEvent.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/VideoPublishedV1.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoPublishedV1.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoPublishedV1.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoPublishedV1~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoPublishedV1.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/VideoPublishedV1.dia"
+  },
+  "/Users/greg/Development/Songbird/demo/warbler/Sources/WarblerCatalog/WarblerCatalog.swift": {
+    "dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/WarblerCatalog.d",
+    "object": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/WarblerCatalog.swift.o",
+    "swiftmodule": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/WarblerCatalog~partial.swiftmodule",
+    "swift-dependencies": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/WarblerCatalog.swiftdeps",
+    "diagnostics": "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/WarblerCatalog.build/WarblerCatalog.dia"
+  }
+}

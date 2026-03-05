@@ -1,0 +1,3 @@
+module HeapModule {
+    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/HeapModule.build/include/HeapModule-Swift.h"
+}

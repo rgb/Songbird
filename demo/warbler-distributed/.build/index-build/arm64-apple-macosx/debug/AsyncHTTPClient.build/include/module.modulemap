@@ -1,0 +1,3 @@
+module AsyncHTTPClient {
+    header "/Users/greg/Development/Songbird/demo/warbler-distributed/.build/index-build/arm64-apple-macosx/debug/AsyncHTTPClient.build/include/AsyncHTTPClient-Swift.h"
+}
