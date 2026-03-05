@@ -4,7 +4,13 @@ Postgres-backed version of the distributed Warbler demo. Identical architecture 
 
 ## Prerequisites
 
-A running PostgreSQL instance. Start one with Docker:
+A running PostgreSQL instance. Start one with Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+Or manually:
 
 ```bash
 docker run -d --name warbler-postgres \

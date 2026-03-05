@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: warbler
+      POSTGRES_PASSWORD: warbler
+      POSTGRES_DB: warbler
+    volumes:
+      - warbler-distributed-pg-data:/var/lib/postgresql/data
+
+volumes:
+  warbler-distributed-pg-data:

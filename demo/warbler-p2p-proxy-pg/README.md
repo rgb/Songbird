@@ -6,7 +6,19 @@ This variant contains no Swift code — it launches the Postgres P2P services fr
 
 ## Prerequisites
 
-A running PostgreSQL instance. Start one with Docker:
+A running PostgreSQL instance. Start one with Docker Compose (includes nginx reverse proxy on `:8080`):
+
+```bash
+docker compose up -d
+```
+
+With Docker Compose, the nginx container replaces the Swift WarblerProxy. Start only the 4 P2P services:
+
+```bash
+cd ../warbler-p2p-pg && ./launch.sh
+```
+
+Or start everything manually without Docker Compose:
 
 ```bash
 docker run -d --name warbler-postgres \
