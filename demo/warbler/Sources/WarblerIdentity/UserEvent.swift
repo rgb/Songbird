@@ -1,0 +1,15 @@
+import Songbird
+
+public enum UserEvent: Event {
+    case registered(email: String, displayName: String)
+    case profileUpdated(displayName: String)
+    case deactivated
+
+    public var eventType: String {
+        switch self {
+        case .registered: "UserRegistered"
+        case .profileUpdated: "ProfileUpdated"
+        case .deactivated: "UserDeactivated"
+        }
+    }
+}
