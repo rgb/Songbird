@@ -23,6 +23,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
         .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.29.0"),
         .package(url: "https://github.com/hummingbird-project/postgres-migrations.git", from: "1.1.0"),
+        .package(url: "https://github.com/Mongey/swift-test-containers.git", branch: "main"),
     ],
     targets: [
         // MARK: - Core
@@ -109,7 +110,11 @@ let package = Package(
 
         .testTarget(
             name: "SongbirdPostgresTests",
-            dependencies: ["SongbirdPostgres", "SongbirdTesting"]
+            dependencies: [
+                "SongbirdPostgres",
+                "SongbirdTesting",
+                .product(name: "TestContainers", package: "swift-test-containers"),
+            ]
         ),
 
         .testTarget(
