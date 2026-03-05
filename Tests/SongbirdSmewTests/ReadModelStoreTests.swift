@@ -412,6 +412,64 @@ struct ReadModelStoreTests {
         #expect(rows[1].name == "recent")
     }
 
+    // MARK: - S3 Configuration
+
+    @Test func configureS3SetsAllFields() async throws {
+        let db = try Database(store: .inMemory)
+        let conn = try db.connect()
+        let s3Config = S3Config(
+            region: "us-west-2",
+            accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+            secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            endpoint: "localhost:9000",
+            useSsl: false
+        )
+        try ReadModelStore.configureS3(connection: conn, s3Config: s3Config)
+
+        let region = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_region'").scalarString()
+        let keyId = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_access_key_id'").scalarString()
+        let secret = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_secret_access_key'").scalarString()
+        let endpoint = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_endpoint'").scalarString()
+        let urlStyle = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_url_style'").scalarString()
+        let useSsl = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_use_ssl'").scalarString()
+
+        #expect(region == "us-west-2")
+        #expect(keyId == "AKIAIOSFODNN7EXAMPLE")
+        #expect(secret == "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+        #expect(endpoint == "localhost:9000")
+        #expect(urlStyle == "path")
+        #expect(useSsl == "false")
+    }
+
+    @Test func configureS3SkipsNilFields() async throws {
+        let db = try Database(store: .inMemory)
+        let conn = try db.connect()
+
+        // Capture defaults before configuring
+        let defaultRegion = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_region'").scalarString()
+        let defaultEndpoint = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_endpoint'").scalarString()
+
+        let s3Config = S3Config(region: "eu-central-1")
+        try ReadModelStore.configureS3(connection: conn, s3Config: s3Config)
+
+        let region = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_region'").scalarString()
+        let endpoint = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_endpoint'").scalarString()
+
+        #expect(region == "eu-central-1")
+        #expect(endpoint == defaultEndpoint, "Endpoint should remain at its default when not explicitly set")
+        _ = defaultRegion  // Silence unused warning
+    }
+
+    @Test func configureS3DefaultsUseSslToTrue() async throws {
+        let db = try Database(store: .inMemory)
+        let conn = try db.connect()
+        let s3Config = S3Config(region: "ap-southeast-1")
+        try ReadModelStore.configureS3(connection: conn, s3Config: s3Config)
+
+        let useSsl = try conn.query("SELECT value FROM duckdb_settings() WHERE name = 's3_use_ssl'").scalarString()
+        #expect(useSsl == "true", "useSsl defaults to true, so s3_use_ssl should remain true")
+    }
+
     // MARK: - Full Tiered Cycle
 
     @Test func fullTieredProjectionCycle() async throws {

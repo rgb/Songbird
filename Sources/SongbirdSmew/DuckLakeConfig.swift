@@ -12,10 +12,11 @@
 /// ```
 public struct DuckLakeConfig: Sendable {
     /// Storage backend for Parquet data files.
-    public enum Backend: String, Sendable {
+    public enum Backend: Sendable {
         /// Local filesystem storage.
         case local
-        // Future: case s3, gcs, azure
+        /// S3-compatible object storage (AWS S3, rustfs, Garage, MinIO, R2).
+        case s3(S3Config)
     }
 
     /// Path to the DuckLake metadata catalog database.
@@ -24,7 +25,7 @@ public struct DuckLakeConfig: Sendable {
     /// Directory path for Parquet data files.
     public let dataPath: String
 
-    /// Storage backend (currently only local).
+    /// Storage backend.
     public let backend: Backend
 
     /// Creates a DuckLake configuration.

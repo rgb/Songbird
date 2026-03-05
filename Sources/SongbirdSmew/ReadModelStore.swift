@@ -69,9 +69,42 @@ public actor ReadModelStore {
     private static func attachDuckLake(connection: Connection, config: DuckLakeConfig) throws {
         try connection.execute("INSTALL ducklake")
         try connection.execute("LOAD ducklake")
+        if case .s3(let s3Config) = config.backend {
+            try configureS3(connection: connection, s3Config: s3Config)
+        }
         try connection.execute(
             "ATTACH 'ducklake:\(config.catalogPath)' AS \(Self.coldSchemaName) (DATA_PATH '\(config.dataPath)')"
         )
+    }
+
+    /// Installs the `httpfs` extension and configures DuckDB S3 settings.
+    ///
+    /// Only non-nil fields in the `S3Config` are set; omitted fields fall back
+    /// to DuckDB defaults (typically AWS environment variables).
+    ///
+    /// - Parameters:
+    ///   - connection: The DuckDB connection to configure.
+    ///   - s3Config: S3 configuration with optional overrides.
+    static func configureS3(connection: Connection, s3Config: S3Config) throws {
+        try connection.execute("INSTALL httpfs")
+        try connection.execute("LOAD httpfs")
+
+        if let region = s3Config.region {
+            try connection.execute("SET s3_region = '\(region)'")
+        }
+        if let accessKeyId = s3Config.accessKeyId {
+            try connection.execute("SET s3_access_key_id = '\(accessKeyId)'")
+        }
+        if let secretAccessKey = s3Config.secretAccessKey {
+            try connection.execute("SET s3_secret_access_key = '\(secretAccessKey)'")
+        }
+        if let endpoint = s3Config.endpoint {
+            try connection.execute("SET s3_endpoint = '\(endpoint)'")
+            try connection.execute("SET s3_url_style = 'path'")
+        }
+        if !s3Config.useSsl {
+            try connection.execute("SET s3_use_ssl = false")
+        }
     }
 
     /// Enables tiered mode for testing without requiring DuckLake.
