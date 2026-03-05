@@ -15,17 +15,20 @@ public struct EventMetadata: Sendable, Codable, Equatable {
     public var causationId: String?
     public var correlationId: String?
     public var userId: String?
+    public var piiReferenceKey: String?
 
     public init(
         traceId: String? = nil,
         causationId: String? = nil,
         correlationId: String? = nil,
-        userId: String? = nil
+        userId: String? = nil,
+        piiReferenceKey: String? = nil
     ) {
         self.traceId = traceId
         self.causationId = causationId
         self.correlationId = correlationId
         self.userId = userId
+        self.piiReferenceKey = piiReferenceKey
     }
 }
 
