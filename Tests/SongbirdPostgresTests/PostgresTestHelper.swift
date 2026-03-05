@@ -67,6 +67,17 @@ private actor ContainerState {
             database: "songbird_test", tls: .disable
         )
     }
+
+    func makeConnectionConfiguration() -> PostgresConnection.Configuration {
+        guard let host, let port else {
+            fatalError("Container not started — call ensureStarted() first")
+        }
+        return PostgresConnection.Configuration(
+            host: host, port: port,
+            username: "songbird", password: "songbird",
+            database: "songbird_test", tls: .disable
+        )
+    }
 }
 
 enum PostgresTestHelper {
@@ -88,6 +99,13 @@ enum PostgresTestHelper {
             try await body(client)
             group.cancelAll()
         }
+    }
+
+    /// Returns a `PostgresConnection.Configuration` for creating dedicated connections (e.g., LISTEN).
+    /// The container is started lazily on first call.
+    static func connectionConfig() async throws -> PostgresConnection.Configuration {
+        try await containerState.ensureStarted()
+        return await containerState.makeConnectionConfiguration()
     }
 
     /// Cleans all Songbird tables (events, subscriber_positions, snapshots) for test isolation.
