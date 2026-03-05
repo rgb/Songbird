@@ -13,11 +13,13 @@ let package = Package(
         .library(name: "SongbirdSQLite", targets: ["SongbirdSQLite"]),
         .library(name: "SongbirdSmew", targets: ["SongbirdSmew"]),
         .library(name: "SongbirdHummingbird", targets: ["SongbirdHummingbird"]),
+        .library(name: "SongbirdDistributed", targets: ["SongbirdDistributed"]),
     ],
     dependencies: [
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", exact: "0.15.3"),
         .package(url: "git@github.com:rgb/smew.git", exact: "0.34.4"),
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
     ],
     targets: [
         // MARK: - Core
@@ -63,6 +65,17 @@ let package = Package(
             ]
         ),
 
+        // MARK: - Distributed
+
+        .target(
+            name: "SongbirdDistributed",
+            dependencies: [
+                "Songbird",
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOPosix", package: "swift-nio"),
+            ]
+        ),
+
         // MARK: - Tests
 
         .testTarget(
@@ -83,6 +96,11 @@ let package = Package(
         .testTarget(
             name: "SongbirdSmewTests",
             dependencies: ["SongbirdSmew", "SongbirdTesting"]
+        ),
+
+        .testTarget(
+            name: "SongbirdDistributedTests",
+            dependencies: ["SongbirdDistributed", "SongbirdTesting"]
         ),
 
         .testTarget(
