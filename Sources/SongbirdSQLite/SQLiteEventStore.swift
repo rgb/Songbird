@@ -92,54 +92,60 @@ public actor SQLiteEventStore: EventStore {
         let streamStr = stream.description
         let category = stream.category
 
-        // Optimistic concurrency check
-        let currentVersion = try currentStreamVersion(streamStr)
-        if let expected = expectedVersion, expected != currentVersion {
-            throw VersionConflictError(
+        var result: RecordedEvent!
+
+        try db.transaction(.immediate) {
+            // Optimistic concurrency check (inside IMMEDIATE transaction — write-locked)
+            let currentVersion = try currentStreamVersion(streamStr)
+            if let expected = expectedVersion, expected != currentVersion {
+                throw VersionConflictError(
+                    streamName: stream,
+                    expectedVersion: expected,
+                    actualVersion: currentVersion
+                )
+            }
+
+            let position = currentVersion + 1
+            let eventId = UUID()
+            let now = Date()
+            let iso8601 = iso8601Formatter.string(from: now)
+            let eventData = try JSONEncoder().encode(event)
+            guard let eventDataString = String(data: eventData, encoding: .utf8) else {
+                throw SQLiteEventStoreError.encodingFailed
+            }
+            let metadataData = try JSONEncoder().encode(metadata)
+            guard let metadataString = String(data: metadataData, encoding: .utf8) else {
+                throw SQLiteEventStoreError.encodingFailed
+            }
+            let eventType = event.eventType
+
+            // Hash chain
+            let previousHash = try lastEventHash() ?? "genesis"
+            let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(eventDataString)\0\(iso8601)"
+            let eventHash = SHA256.hash(data: Data(hashInput.utf8))
+                .map { String(format: "%02x", $0) }
+                .joined()
+
+            try db.run("""
+                INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp, event_hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, streamStr, category, position, eventType, eventDataString, metadataString, eventId.uuidString, iso8601, eventHash)
+
+            let globalPosition = db.lastInsertRowid - 1  // 0-based (AUTOINCREMENT starts at 1)
+
+            result = RecordedEvent(
+                id: eventId,
                 streamName: stream,
-                expectedVersion: expected,
-                actualVersion: currentVersion
+                position: position,
+                globalPosition: globalPosition,
+                eventType: eventType,
+                data: eventData,
+                metadata: metadata,
+                timestamp: now
             )
         }
 
-        let position = currentVersion + 1
-        let eventId = UUID()
-        let now = Date()
-        let iso8601 = iso8601Formatter.string(from: now)
-        let eventData = try JSONEncoder().encode(event)
-        guard let eventDataString = String(data: eventData, encoding: .utf8) else {
-            throw SQLiteEventStoreError.encodingFailed
-        }
-        let metadataData = try JSONEncoder().encode(metadata)
-        guard let metadataString = String(data: metadataData, encoding: .utf8) else {
-            throw SQLiteEventStoreError.encodingFailed
-        }
-        let eventType = event.eventType
-
-        // Hash chain
-        let previousHash = try lastEventHash() ?? "genesis"
-        let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(eventDataString)\0\(iso8601)"
-        let eventHash = SHA256.hash(data: Data(hashInput.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
-
-        try db.run("""
-            INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp, event_hash)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, streamStr, category, position, eventType, eventDataString, metadataString, eventId.uuidString, iso8601, eventHash)
-
-        let globalPosition = db.lastInsertRowid - 1  // 0-based (AUTOINCREMENT starts at 1)
-
-        return RecordedEvent(
-            id: eventId,
-            streamName: stream,
-            position: position,
-            globalPosition: globalPosition,
-            eventType: eventType,
-            data: eventData,
-            metadata: metadata,
-            timestamp: now
-        )
+        return result
     }
 
     // MARK: - Read Stream

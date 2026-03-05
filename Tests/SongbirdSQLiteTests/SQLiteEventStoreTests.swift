@@ -292,6 +292,42 @@ struct SQLiteEventStoreTests {
         #expect(events.count == 2)
     }
 
+    // MARK: - Cross-Connection Concurrency
+
+    @Test func concurrentAppendFromSeparateConnectionsDetectsConflict() async throws {
+        // Two stores sharing the same SQLite file simulate cross-process access
+        let tempDir = FileManager.default.temporaryDirectory
+        let dbPath = tempDir.appendingPathComponent("songbird-concurrent-test-\(UUID().uuidString).sqlite").path
+        defer { try? FileManager.default.removeItem(atPath: dbPath) }
+
+        let registry = EventTypeRegistry()
+        registry.register(AccountEvent.self, eventTypes: ["Credited", "Debited"])
+
+        let store1 = try SQLiteEventStore(path: dbPath, registry: registry)
+        let store2 = try SQLiteEventStore(path: dbPath, registry: registry)
+
+        let stream = StreamName(category: "account", id: "abc")
+
+        // First append from store1 should succeed
+        _ = try await store1.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: -1
+        )
+
+        // Second append from store2 with expectedVersion: -1 should fail
+        // because store1 already wrote position 0
+        await #expect(throws: VersionConflictError.self) {
+            try await store2.append(
+                AccountEvent.credited(amount: 200),
+                to: stream,
+                metadata: EventMetadata(),
+                expectedVersion: -1
+            )
+        }
+    }
+
     @Test func readCategoryConvenienceStillWorks() async throws {
         let store = try makeStore()
         let s1 = StreamName(category: "account", id: "a")
