@@ -1,0 +1,55 @@
+# Warbler P2P Reverse Proxy — Caddy configuration
+#
+# Usage:
+#   1. Start the 4 P2P services (cd ../warbler-p2p && ./launch.sh)
+#   2. Run Caddy with this config:
+#      caddy run --config config/Caddyfile
+#   3. Access all services via http://localhost:8080
+
+:8080 {
+    handle_path /health {
+        respond `{"status":"healthy","note":"caddy does not check backend health by default"}` 200 {
+            close
+        }
+    }
+
+    handle /users/* {
+        reverse_proxy localhost:8081
+    }
+
+    handle /users {
+        reverse_proxy localhost:8081
+    }
+
+    handle /videos/* {
+        reverse_proxy localhost:8082
+    }
+
+    handle /videos {
+        reverse_proxy localhost:8082
+    }
+
+    handle /subscriptions/* {
+        reverse_proxy localhost:8083
+    }
+
+    handle /subscriptions {
+        reverse_proxy localhost:8083
+    }
+
+    handle /analytics/* {
+        reverse_proxy localhost:8084
+    }
+
+    handle /analytics {
+        reverse_proxy localhost:8084
+    }
+
+    handle {
+        respond `{"error":"No backend for this path"}` 404
+    }
+
+    log {
+        output stdout
+    }
+}
