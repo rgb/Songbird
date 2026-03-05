@@ -41,8 +41,6 @@ public struct PostgresEventStore: EventStore, Sendable {
             throw PostgresEventStoreError.encodingFailed
         }
 
-        let iso8601 = ISO8601DateFormatter().string(from: now)
-
         var globalPosition: Int64 = 0
         var position: Int64 = 0
 
@@ -60,23 +58,33 @@ public struct PostgresEventStore: EventStore, Sendable {
 
                 position = currentVersion + 1
 
-                // Hash chain
+                // Hash chain: insert first, then compute hash from JSONB-normalized data
                 let previousHash = try await self.lastEventHash(connection: connection) ?? "genesis"
-                let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(eventDataString)\0\(iso8601)"
+
+                let insertRows = try await connection.query("""
+                    INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp)
+                    VALUES (\(streamStr), \(category), \(position), \(eventType), \(eventDataString)::jsonb, \(metadataString)::jsonb, \(eventId), \(now))
+                    RETURNING global_position, data::text, to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                    """,
+                    logger: logger
+                )
+                var normalizedData = ""
+                var normalizedTimestamp = ""
+                for try await (gp, dataText, ts) in insertRows.decode((Int64, String, String).self) {
+                    globalPosition = gp - 1  // 0-based (BIGSERIAL starts at 1)
+                    normalizedData = dataText
+                    normalizedTimestamp = ts
+                }
+
+                let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(normalizedData)\0\(normalizedTimestamp)"
                 let eventHash = SHA256.hash(data: Data(hashInput.utf8))
                     .map { String(format: "%02x", $0) }
                     .joined()
 
-                let rows = try await connection.query("""
-                    INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp, event_hash)
-                    VALUES (\(streamStr), \(category), \(position), \(eventType), \(eventDataString)::jsonb, \(metadataString)::jsonb, \(eventId), \(now), \(eventHash))
-                    RETURNING global_position
-                    """,
+                try await connection.query(
+                    "UPDATE events SET event_hash = \(eventHash) WHERE global_position = \(globalPosition + 1)",
                     logger: logger
                 )
-                for try await (gp,) in rows.decode((Int64,).self) {
-                    globalPosition = gp - 1  // 0-based (BIGSERIAL starts at 1)
-                }
 
                 // Notify listeners
                 try await connection.query(
@@ -84,8 +92,24 @@ public struct PostgresEventStore: EventStore, Sendable {
                     logger: logger
                 )
             }
-        } catch let error as PSQLError {
+        } catch let txError as PostgresTransactionError {
+            // Unwrap VersionConflictError from the transaction wrapper
+            if let versionError = txError.closureError as? VersionConflictError {
+                throw versionError
+            }
             // Unique constraint violation on (stream_name, position) means a concurrent append
+            if let psqlError = txError.closureError as? PSQLError,
+               psqlError.serverInfo?[.sqlState] == "23505"
+            {
+                let actualVersion = try await currentStreamVersion(streamName: streamStr)
+                throw VersionConflictError(
+                    streamName: stream,
+                    expectedVersion: expectedVersion ?? -1,
+                    actualVersion: actualVersion
+                )
+            }
+            throw txError
+        } catch let error as PSQLError {
             if error.serverInfo?[.sqlState] == "23505" {
                 let actualVersion = try await currentStreamVersion(streamName: streamStr)
                 throw VersionConflictError(

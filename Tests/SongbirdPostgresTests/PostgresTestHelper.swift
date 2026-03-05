@@ -3,7 +3,25 @@ import Logging
 import PostgresNIO
 @testable import SongbirdPostgres
 
+private actor MigrationGuard {
+    private var applied = false
+
+    func ensureApplied(configuration: PostgresClient.Configuration) async throws {
+        guard !applied else { return }
+        let logger = Logger(label: "songbird.test.migrations")
+        let client = PostgresClient(configuration: configuration)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { await client.run() }
+            try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+            group.cancelAll()
+        }
+        applied = true
+    }
+}
+
 enum PostgresTestHelper {
+    private static let migrationGuard = MigrationGuard()
+
     /// Default test configuration — connects to localhost:5432 with songbird/songbird credentials.
     /// Override via environment variables: POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB.
     static func makeConfiguration(database: String? = nil) -> PostgresClient.Configuration {
@@ -19,25 +37,18 @@ enum PostgresTestHelper {
         )
     }
 
-    /// Runs a test block with a connected PostgresClient that has migrations applied.
-    /// The client is started in a background task and cancelled after the block completes.
+    /// Runs a test block with a connected PostgresClient.
+    /// Migrations are applied once (lazily on first call). Each test gets a fresh client.
     static func withTestClient(
         _ body: @Sendable (PostgresClient) async throws -> Void
     ) async throws {
-        let logger = Logger(label: "songbird.test")
         let config = makeConfiguration()
-        let client = PostgresClient(configuration: config)
+        try await migrationGuard.ensureApplied(configuration: config)
 
+        let client = PostgresClient(configuration: config)
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
-
-            // Run migrations before test code
-            try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
-
-            // Run the test body
             try await body(client)
-
-            // Cancel the client task
             group.cancelAll()
         }
     }
