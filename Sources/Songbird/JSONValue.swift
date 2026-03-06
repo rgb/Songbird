@@ -81,7 +81,7 @@ internal enum JSONValue: Codable, Equatable, Sendable {
 
 // MARK: - DynamicCodingKey
 
-internal struct DynamicCodingKey: CodingKey {
+private struct DynamicCodingKey: CodingKey {
     var stringValue: String
     var intValue: Int?
 
@@ -125,6 +125,9 @@ internal struct EncryptedPayload: Event {
             dict[key.stringValue] = try container.decode(JSONValue.self, forKey: key)
         }
         self.fields = dict
+        // EncryptedPayload is always constructed via init(originalEventType:fields:).
+        // This Decodable path exists only for protocol conformance and lacks the
+        // original event type. Callers should not rely on decoding EncryptedPayload.
         self.originalEventType = ""
     }
 
