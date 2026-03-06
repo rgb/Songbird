@@ -42,8 +42,17 @@ extension MetricsEventStore: EventStore {
                 .recordNanoseconds(elapsed.nanoseconds)
 
             return result
-        } catch let error as VersionConflictError {
-            Counter(label: "songbird_event_store_version_conflict_total", dimensions: dims).increment()
+        } catch {
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_append_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+
+            if error is VersionConflictError {
+                Counter(label: "songbird_event_store_version_conflict_total", dimensions: dims).increment()
+            } else {
+                Counter(label: "songbird_event_store_append_errors_total", dimensions: dims).increment()
+            }
+
             throw error
         }
     }
