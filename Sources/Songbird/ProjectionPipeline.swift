@@ -2,7 +2,7 @@ import Foundation
 import Logging
 import Metrics
 
-public enum ProjectionPipelineError: Error {
+public enum ProjectionPipelineError: Error, Equatable {
     case timeout
 }
 

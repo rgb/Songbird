@@ -250,7 +250,7 @@ extension Array where Element: Sendable {
 
 // MARK: - Errors
 
-public enum CryptoShreddingError: Error {
+public enum CryptoShreddingError: Error, Equatable {
     case invalidCiphertext
     case sealFailure
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum EventTypeRegistryError: Error {
+public enum EventTypeRegistryError: Error, Equatable {
     case unregisteredEventType(String)
 }
 

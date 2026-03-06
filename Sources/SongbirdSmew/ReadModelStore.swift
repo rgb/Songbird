@@ -323,7 +323,8 @@ extension ReadModelStore {
                     try await projector.apply(record)
                 }
             }
-            position = batch.last!.globalPosition + 1
+            guard let lastEvent = batch.last else { break }
+            position = lastEvent.globalPosition + 1
         }
     }
 }

@@ -103,6 +103,6 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
     }
 }
 
-public enum AggregateError: Error {
+public enum AggregateError: Error, Equatable {
     case unexpectedEventType(String)
 }
