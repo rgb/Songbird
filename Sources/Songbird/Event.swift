@@ -32,7 +32,7 @@ public struct EventMetadata: Sendable, Codable, Equatable {
     }
 }
 
-public struct RecordedEvent: Sendable {
+public struct RecordedEvent: Sendable, Equatable {
     public let id: UUID
     public let streamName: StreamName
     public let position: Int64
