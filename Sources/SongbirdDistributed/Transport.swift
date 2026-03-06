@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import NIOCore
 import NIOPosix
 
@@ -197,6 +198,9 @@ public actor TransportClient {
 // Build warning "Conformance of 'ByteToMessageHandler<Decoder>' to 'Sendable'
 // is unavailable" comes from SwiftNIO upstream and cannot be fixed in our code.
 
+/// Maximum allowed wire message size (16 MB).
+private let maxWireMessageSize: UInt32 = 16 * 1024 * 1024
+
 /// Length-prefixed frame decoder: reads 4-byte big-endian length + payload.
 final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
     typealias InboundOut = ByteBuffer
@@ -206,6 +210,11 @@ final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
 
         let lengthIndex = buffer.readerIndex
         guard let length = buffer.getInteger(at: lengthIndex, as: UInt32.self) else {
+            return .needMoreData
+        }
+
+        guard length <= maxWireMessageSize else {
+            context.close(promise: nil)
             return .needMoreData
         }
 
@@ -239,6 +248,7 @@ final class MessageFrameEncoder: ChannelOutboundHandler, @unchecked Sendable {
 /// Server-side handler: decodes incoming messages and dispatches to the WireMessageHandler.
 final class ServerInboundHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = ByteBuffer
+    private static let logger = Logger(label: "songbird.transport.server")
 
     let messageHandler: any WireMessageHandler
 
@@ -249,7 +259,10 @@ final class ServerInboundHandler: ChannelInboundHandler, @unchecked Sendable {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var buffer = unwrapInboundIn(data)
         guard let bytes = buffer.readBytes(length: buffer.readableBytes) else { return }
-        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else { return }
+        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else {
+            Self.logger.warning("Failed to decode incoming message, dropping")
+            return
+        }
 
         let channel = context.channel
         let handler = messageHandler
@@ -262,6 +275,7 @@ final class ServerInboundHandler: ChannelInboundHandler, @unchecked Sendable {
 /// Client-side handler: receives responses and forwards them to the TransportClient actor.
 final class ClientInboundHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = ByteBuffer
+    private static let logger = Logger(label: "songbird.transport.client")
 
     let client: TransportClient
 
@@ -272,7 +286,10 @@ final class ClientInboundHandler: ChannelInboundHandler, @unchecked Sendable {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var buffer = unwrapInboundIn(data)
         guard let bytes = buffer.readBytes(length: buffer.readableBytes) else { return }
-        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else { return }
+        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else {
+            Self.logger.warning("Failed to decode response message, dropping")
+            return
+        }
 
         Task {
             await client.receiveResponse(message)
