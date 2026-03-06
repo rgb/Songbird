@@ -117,13 +117,17 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
                 }
             }
 
-            // Append output events
+            // Append output events with causation chain from the input event
             let outputStream = StreamName(category: PM.processId, id: route)
+            let outputMetadata = EventMetadata(
+                causationId: recorded.id.uuidString,
+                correlationId: recorded.metadata.correlationId ?? recorded.id.uuidString
+            )
             for event in output {
                 _ = try await store.append(
                     event,
                     to: outputStream,
-                    metadata: EventMetadata(),
+                    metadata: outputMetadata,
                     expectedVersion: nil
                 )
             }
