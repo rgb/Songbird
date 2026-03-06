@@ -60,8 +60,8 @@ public struct EventSubscription: AsyncSequence, Sendable {
         categories: [String],
         store: any EventStore,
         positionStore: any PositionStore,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         self.subscriberId = subscriberId
         self.categories = categories

@@ -42,8 +42,8 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
     public init(
         store: any EventStore,
         positionStore: any PositionStore,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100),
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval,
         maxCacheSize: Int = 10_000
     ) {
         self.store = store

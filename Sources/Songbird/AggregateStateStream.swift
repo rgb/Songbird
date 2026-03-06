@@ -47,8 +47,8 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
         store: any EventStore,
         registry: EventTypeRegistry,
         snapshotStore: (any SnapshotStore)? = nil,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         self.id = id
         self.store = store

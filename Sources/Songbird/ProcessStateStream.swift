@@ -40,8 +40,8 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
     public init(
         instanceId: String,
         store: any EventStore,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         self.instanceId = instanceId
         self.store = store

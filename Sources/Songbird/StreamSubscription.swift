@@ -38,8 +38,8 @@ public struct StreamSubscription: AsyncSequence, Sendable {
         stream: StreamName,
         store: any EventStore,
         startPosition: Int64 = 0,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         self.stream = stream
         self.store = store

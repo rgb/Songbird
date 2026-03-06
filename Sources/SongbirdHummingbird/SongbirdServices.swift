@@ -72,8 +72,8 @@ public struct SongbirdServices: Sendable {
     /// the projection pipeline when `run()` is called.
     public mutating func registerProcessManager<PM: ProcessManager>(
         _ type: PM.Type,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         let runner = ProcessManagerRunner<PM>(
             store: eventStore,
@@ -90,8 +90,8 @@ public struct SongbirdServices: Sendable {
     /// the projection pipeline when `run()` is called.
     public mutating func registerGateway<G: Gateway>(
         _ gateway: G,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         let runner = GatewayRunner(
             gateway: gateway,

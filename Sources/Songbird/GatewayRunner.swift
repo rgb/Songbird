@@ -37,8 +37,8 @@ public actor GatewayRunner<G: Gateway> {
         gateway: G,
         store: any EventStore,
         positionStore: any PositionStore,
-        batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        batchSize: Int = SubscriptionDefaults.batchSize,
+        tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
         self.gateway = gateway
         self.store = store
