@@ -79,6 +79,8 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
         private var state: A.State = A.initialState
         private var position: Int64 = 0
         private var initialFoldDone: Bool = false
+        private var pendingBatch: [RecordedEvent] = []
+        private var pendingBatchIndex: Int = 0
 
         init(
             stream: StreamName,
@@ -131,6 +133,20 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
             }
 
             // Phase 2: Poll for new events, yield state after each one
+            // Return next event from pending batch if available
+            if pendingBatchIndex < pendingBatch.count {
+                let record = pendingBatch[pendingBatchIndex]
+                pendingBatchIndex += 1
+                let decoded = try registry.decode(record)
+                guard let event = decoded as? A.Event else {
+                    throw AggregateError.unexpectedEventType(record.eventType)
+                }
+                state = A.apply(state, event)
+                position = record.position + 1
+                return state
+            }
+
+            // Pending batch exhausted -- poll for new events
             while !Task.isCancelled {
                 try Task.checkCancellation()
 
@@ -141,9 +157,6 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
                 )
 
                 if !batch.isEmpty {
-                    // Apply the first event and yield the updated state.
-                    // Remaining events in the batch will be processed on subsequent
-                    // calls to next() via the same poll-then-apply loop.
                     let record = batch[0]
                     let decoded = try registry.decode(record)
                     guard let event = decoded as? A.Event else {
@@ -151,6 +164,11 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
                     }
                     state = A.apply(state, event)
                     position = record.position + 1
+
+                    // Cache remaining events for subsequent next() calls
+                    pendingBatch = batch
+                    pendingBatchIndex = 1
+
                     return state
                 }
 

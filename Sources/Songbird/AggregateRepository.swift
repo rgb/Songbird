@@ -30,15 +30,22 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         }
 
         // Fold events from the snapshot version (or 0 if no snapshot)
-        let records = try await store.readStream(stream, from: fromPosition, maxCount: Int.max)
-        for record in records {
-            let decoded = try registry.decode(record)
-            guard let event = decoded as? A.Event else {
-                throw AggregateError.unexpectedEventType(record.eventType)
+        let batchSize = 1000
+        var currentPosition = fromPosition
+        var version: Int64 = fromPosition > 0 ? fromPosition - 1 : -1
+        while true {
+            let records = try await store.readStream(stream, from: currentPosition, maxCount: batchSize)
+            for record in records {
+                let decoded = try registry.decode(record)
+                guard let event = decoded as? A.Event else {
+                    throw AggregateError.unexpectedEventType(record.eventType)
+                }
+                state = A.apply(state, event)
+                version = record.position
             }
-            state = A.apply(state, event)
+            if records.count < batchSize { break }
+            currentPosition = version + 1
         }
-        let version = records.last?.position ?? (fromPosition > 0 ? fromPosition - 1 : -1)
         return (state, version)
     }
 

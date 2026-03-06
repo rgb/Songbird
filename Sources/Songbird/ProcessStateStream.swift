@@ -69,6 +69,8 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
         private var state: PM.State = PM.initialState
         private var globalPosition: Int64 = 0
         private var initialFoldDone: Bool = false
+        private var pendingBatch: [RecordedEvent] = []
+        private var pendingBatchIndex: Int = 0
 
         init(
             instanceId: String,
@@ -108,6 +110,18 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
             }
 
             // Phase 2: Poll for new events, yield state after each matching one
+            // Return from pending batch if available
+            while pendingBatchIndex < pendingBatch.count {
+                let record = pendingBatch[pendingBatchIndex]
+                pendingBatchIndex += 1
+                let matched = try applyIfMatching(record)
+                globalPosition = record.globalPosition + 1
+                if matched {
+                    return state
+                }
+            }
+
+            // Pending batch exhausted -- poll for new events
             while !Task.isCancelled {
                 try Task.checkCancellation()
 
@@ -118,11 +132,13 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
                 )
 
                 if !batch.isEmpty {
-                    // Process all events in the batch, tracking whether any matched
-                    for record in batch {
+                    for (index, record) in batch.enumerated() {
                         let matched = try applyIfMatching(record)
                         globalPosition = record.globalPosition + 1
                         if matched {
+                            // Cache remaining events for subsequent next() calls
+                            pendingBatch = batch
+                            pendingBatchIndex = index + 1
                             return state
                         }
                     }
