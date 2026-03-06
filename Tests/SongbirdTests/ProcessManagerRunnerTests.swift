@@ -328,6 +328,51 @@ struct ProcessManagerRunnerTests {
         #expect(state == RunnerFulfillmentPM.initialState)
     }
 
+    // MARK: - Cache Eviction
+
+    @Test func cacheEvictsEntriesWhenExceedingMaxSize() async throws {
+        let (store, positionStore) = makeStores()
+
+        let runner = ProcessManagerRunner<RunnerFulfillmentPM>(
+            store: store,
+            positionStore: positionStore,
+            tickInterval: .milliseconds(10),
+            maxCacheSize: 2
+        )
+
+        let task = Task { try await runner.run() }
+
+        // Append events for 3 different entities
+        for i in 1...3 {
+            let orderId = "order-\(i)"
+            _ = try await store.append(
+                RunnerOrderEvent.placed(orderId: orderId, total: i * 100),
+                to: StreamName(category: "runnerOrder", id: orderId),
+                metadata: EventMetadata(),
+                expectedVersion: nil
+            )
+        }
+
+        // Wait for the runner to process all events
+        try await Task.sleep(for: .milliseconds(200))
+
+        // With maxCacheSize: 2, at least one of the first two entities should have
+        // been evicted (returning initialState). The third entity is always cached
+        // because it was inserted last and eviction happens after insertion.
+        let state1 = await runner.state(for: "order-1")
+        let state2 = await runner.state(for: "order-2")
+        let state3 = await runner.state(for: "order-3")
+
+        let evictedCount = [state1, state2, state3].filter { $0 == RunnerFulfillmentPM.initialState }.count
+        #expect(evictedCount >= 1, "At least one entity should have been evicted from the cache")
+
+        // The most recently processed entity should still be cached
+        #expect(state3 == RunnerFulfillmentPM.State(total: 300, paid: false))
+
+        task.cancel()
+        _ = await task.result
+    }
+
     // MARK: - Cancellation
 
     @Test func cancellationStopsTheRunner() async throws {

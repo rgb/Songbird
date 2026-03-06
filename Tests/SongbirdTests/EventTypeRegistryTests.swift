@@ -112,6 +112,27 @@ struct EventTypeRegistryTests {
         #expect(w == .withdrawn(amount: 50, reason: "ATM"))
     }
 
+    @Test func duplicateRegistrationOverwritesPrevious() throws {
+        let registry = EventTypeRegistry()
+        registry.register(AccountEvent.self, eventTypes: ["Deposited"])
+        // Re-register same type for same string (misconfiguration but shouldn't crash)
+        registry.register(AccountEvent.self, eventTypes: ["Deposited"])
+
+        let data = try JSONEncoder().encode(AccountEvent.deposited(amount: 100))
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "account", id: "1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "Deposited",
+            data: data,
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        let decoded = try registry.decode(recorded) as! AccountEvent
+        #expect(decoded == .deposited(amount: 100))
+    }
+
     @Test func existingEventsDefaultToVersion1() {
         #expect(AccountEvent.version == 1)
     }
