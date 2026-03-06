@@ -72,8 +72,10 @@ public actor ReadModelStore {
         if case .s3(let s3Config) = config.backend {
             try configureS3(connection: connection, s3Config: s3Config)
         }
+        let catalogPath = escapeSQLString(config.catalogPath)
+        let dataPath = escapeSQLString(config.dataPath)
         try connection.execute(
-            "ATTACH 'ducklake:\(config.catalogPath)' AS \(Self.coldSchemaName) (DATA_PATH '\(config.dataPath)')"
+            "ATTACH 'ducklake:\(catalogPath)' AS \(Self.coldSchemaName) (DATA_PATH '\(dataPath)')"
         )
     }
 
@@ -90,16 +92,16 @@ public actor ReadModelStore {
         try connection.execute("LOAD httpfs")
 
         if let region = s3Config.region {
-            try connection.execute("SET s3_region = '\(region)'")
+            try connection.execute("SET s3_region = '\(escapeSQLString(region))'")
         }
         if let accessKeyId = s3Config.accessKeyId {
-            try connection.execute("SET s3_access_key_id = '\(accessKeyId)'")
+            try connection.execute("SET s3_access_key_id = '\(escapeSQLString(accessKeyId))'")
         }
         if let secretAccessKey = s3Config.secretAccessKey {
-            try connection.execute("SET s3_secret_access_key = '\(secretAccessKey)'")
+            try connection.execute("SET s3_secret_access_key = '\(escapeSQLString(secretAccessKey))'")
         }
         if let endpoint = s3Config.endpoint {
-            try connection.execute("SET s3_endpoint = '\(endpoint)'")
+            try connection.execute("SET s3_endpoint = '\(escapeSQLString(endpoint))'")
             try connection.execute("SET s3_url_style = 'path'")
         }
         if !s3Config.useSsl {
@@ -180,13 +182,15 @@ public actor ReadModelStore {
     /// both the hot and cold tiers via `UNION ALL`.
     private func createColdTierMirrors() throws {
         for table in _registeredTables {
+            let escapedTable = escapeSQLIdentifier(table)
+            let escapedViewName = escapeSQLIdentifier("v_\(table)")
             // Create cold-tier mirror with identical schema (empty)
             try connection.execute(
-                "CREATE TABLE IF NOT EXISTS \(Self.coldSchemaName).\"\(table)\" AS SELECT * FROM \"\(table)\" WHERE FALSE"
+                "CREATE TABLE IF NOT EXISTS \(Self.coldSchemaName).\"\(escapedTable)\" AS SELECT * FROM \"\(escapedTable)\" WHERE FALSE"
             )
             // Create UNION ALL view spanning both tiers
             try connection.execute(
-                "CREATE OR REPLACE VIEW \"v_\(table)\" AS SELECT * FROM \"\(table)\" UNION ALL SELECT * FROM \(Self.coldSchemaName).\"\(table)\""
+                "CREATE OR REPLACE VIEW \"\(escapedViewName)\" AS SELECT * FROM \"\(escapedTable)\" UNION ALL SELECT * FROM \(Self.coldSchemaName).\"\(escapedTable)\""
             )
         }
     }
@@ -263,8 +267,9 @@ extension ReadModelStore {
         var totalMoved = 0
 
         for table in _registeredTables {
-            let hotTable = "\"\(table)\""
-            let coldTable = "\(Self.coldSchemaName).\"\(table)\""
+            let escapedTable = escapeSQLIdentifier(table)
+            let hotTable = "\"\(escapedTable)\""
+            let coldTable = "\(Self.coldSchemaName).\"\(escapedTable)\""
 
             let countResult = try connection.query(
                 "SELECT COUNT(*) FROM \(hotTable) WHERE \(whereClause)"
