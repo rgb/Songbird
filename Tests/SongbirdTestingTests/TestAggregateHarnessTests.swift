@@ -25,7 +25,7 @@ enum HarnessCounter: Aggregate {
         case cannotDecrementBelowZero
     }
 
-    static let category = "harness-counter"
+    static let category = "harnessCounter"
     static let initialState = State(count: 0)
 
     static func apply(_ state: State, _ event: Event) -> State {

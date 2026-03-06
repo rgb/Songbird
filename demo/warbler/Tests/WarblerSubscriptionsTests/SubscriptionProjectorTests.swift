@@ -48,7 +48,7 @@ struct SubscriptionProjectorTests {
         )
         try await harness.given(
             SubscriptionLifecycleEvent.accessGranted(userId: "user-1"),
-            streamName: StreamName(category: "subscription-lifecycle", id: "sub-1")
+            streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
 
         let sub: SubRow? = try await readModel.queryFirst(SubRow.self) {
@@ -66,7 +66,7 @@ struct SubscriptionProjectorTests {
         )
         try await harness.given(
             SubscriptionLifecycleEvent.subscriptionCancelled(reason: "Payment failed"),
-            streamName: StreamName(category: "subscription-lifecycle", id: "sub-1")
+            streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
 
         let sub: SubRow? = try await readModel.queryFirst(SubRow.self) {

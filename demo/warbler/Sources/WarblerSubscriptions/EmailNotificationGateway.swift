@@ -2,7 +2,7 @@ import Songbird
 
 public actor EmailNotificationGateway: Gateway {
     public let gatewayId = "EmailNotification"
-    public static let categories = ["subscription-lifecycle"]
+    public static let categories = ["subscriptionLifecycle"]
 
     /// Tracks notifications sent (for testing and logging).
     public private(set) var sentNotifications: [(type: String, userId: String)] = []

@@ -13,7 +13,7 @@ struct EmailNotificationGatewayTests {
 
         let event = try RecordedEvent(
             event: SubscriptionLifecycleEvent.accessGranted(userId: "user-1"),
-            streamName: StreamName(category: "subscription-lifecycle", id: "sub-1")
+            streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
         await harness.given(event)
 
@@ -32,7 +32,7 @@ struct EmailNotificationGatewayTests {
 
         let event = try RecordedEvent(
             event: SubscriptionLifecycleEvent.subscriptionCancelled(reason: "Payment failed"),
-            streamName: StreamName(category: "subscription-lifecycle", id: "sub-1")
+            streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
         await harness.given(event)
 

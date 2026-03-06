@@ -102,12 +102,12 @@ enum RunnerFulfillmentPM: ProcessManager {
         var paid: Bool
     }
 
-    static let processId = "runner-fulfillment"
+    static let processId = "runnerFulfillment"
     static let initialState = State(total: 0, paid: false)
 
     static let reactions: [AnyReaction<State>] = [
-        reaction(for: RunnerOnOrderPlaced.self, categories: ["runner-order"]),
-        reaction(for: RunnerOnPaymentCharged.self, categories: ["runner-payment"]),
+        reaction(for: RunnerOnOrderPlaced.self, categories: ["runnerOrder"]),
+        reaction(for: RunnerOnPaymentCharged.self, categories: ["runnerPayment"]),
     ]
 }
 
@@ -134,7 +134,7 @@ struct ProcessManagerRunnerTests {
         let task = Task { try await runner.run() }
 
         // Append an order placed event
-        let orderStream = StreamName(category: "runner-order", id: "order-1")
+        let orderStream = StreamName(category: "runnerOrder", id: "order-1")
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-1", total: 100),
             to: orderStream,
@@ -146,7 +146,7 @@ struct ProcessManagerRunnerTests {
         try await Task.sleep(for: .milliseconds(100))
 
         // Check that a reaction event was appended
-        let outputStream = StreamName(category: "runner-fulfillment", id: "order-1")
+        let outputStream = StreamName(category: "runnerFulfillment", id: "order-1")
         let outputEvents = try await store.readStream(outputStream, from: 0, maxCount: 100)
 
         #expect(outputEvents.count == 1)
@@ -176,13 +176,13 @@ struct ProcessManagerRunnerTests {
         // Place two separate orders
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-A", total: 100),
-            to: StreamName(category: "runner-order", id: "order-A"),
+            to: StreamName(category: "runnerOrder", id: "order-A"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-B", total: 200),
-            to: StreamName(category: "runner-order", id: "order-B"),
+            to: StreamName(category: "runnerOrder", id: "order-B"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -199,12 +199,12 @@ struct ProcessManagerRunnerTests {
 
         // Each entity should have its own output stream
         let outputA = try await store.readStream(
-            StreamName(category: "runner-fulfillment", id: "order-A"),
+            StreamName(category: "runnerFulfillment", id: "order-A"),
             from: 0,
             maxCount: 100
         )
         let outputB = try await store.readStream(
-            StreamName(category: "runner-fulfillment", id: "order-B"),
+            StreamName(category: "runnerFulfillment", id: "order-B"),
             from: 0,
             maxCount: 100
         )
@@ -240,7 +240,7 @@ struct ProcessManagerRunnerTests {
         // Step 1: Place order
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-1", total: 150),
-            to: StreamName(category: "runner-order", id: "order-1"),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -250,7 +250,7 @@ struct ProcessManagerRunnerTests {
         // Step 2: Charge payment
         _ = try await store.append(
             RunnerPaymentEvent.charged(orderId: "order-1"),
-            to: StreamName(category: "runner-payment", id: "order-1"),
+            to: StreamName(category: "runnerPayment", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -262,7 +262,7 @@ struct ProcessManagerRunnerTests {
         #expect(state == RunnerFulfillmentPM.State(total: 150, paid: true))
 
         // Output stream should have both reaction events
-        let outputStream = StreamName(category: "runner-fulfillment", id: "order-1")
+        let outputStream = StreamName(category: "runnerFulfillment", id: "order-1")
         let outputEvents = try await store.readStream(outputStream, from: 0, maxCount: 100)
 
         #expect(outputEvents.count == 2)
@@ -290,7 +290,7 @@ struct ProcessManagerRunnerTests {
         let unknownEvent = SubscriptionTestEvent.occurred(value: 999)
         _ = try await store.append(
             unknownEvent,
-            to: StreamName(category: "runner-order", id: "x"),
+            to: StreamName(category: "runnerOrder", id: "x"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -303,7 +303,7 @@ struct ProcessManagerRunnerTests {
 
         // No output events should exist
         let outputEvents = try await store.readStream(
-            StreamName(category: "runner-fulfillment", id: "x"),
+            StreamName(category: "runnerFulfillment", id: "x"),
             from: 0,
             maxCount: 100
         )

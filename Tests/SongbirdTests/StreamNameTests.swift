@@ -58,17 +58,15 @@ struct StreamNameTests {
         #expect(stream == decoded)
     }
 
-    @Test func emptyStringsAreAllowed() {
-        let stream = StreamName(category: "", id: "")
-        #expect(stream.category == "")
-        #expect(stream.id == "")
-        #expect(stream.description == "-")
-        #expect(stream.isCategory == false)
+    @Test func validCategoryIsAccepted() {
+        let stream = StreamName(category: "order", id: "123")
+        #expect(stream.category == "order")
+        #expect(stream.id == "123")
     }
 
-    @Test func emptyCategoryStream() {
-        let stream = StreamName(category: "")
-        #expect(stream.description == "")
+    @Test func categoryWithoutHyphensIsAccepted() {
+        let stream = StreamName(category: "orderItem")
+        #expect(stream.category == "orderItem")
         #expect(stream.isCategory == true)
     }
 }

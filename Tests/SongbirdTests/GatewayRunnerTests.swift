@@ -13,7 +13,7 @@ private struct GatewayRunnerTestEvent: Event {
 
 private actor RecordingGateway: Gateway {
     let gatewayId = "recording-gateway"
-    static let categories = ["gw-test"]
+    static let categories = ["gwTest"]
     private(set) var handledEvents: [RecordedEvent] = []
 
     func handle(_ event: RecordedEvent) async throws {
@@ -23,7 +23,7 @@ private actor RecordingGateway: Gateway {
 
 private actor FailingGateway: Gateway {
     let gatewayId = "failing-gateway"
-    static let categories = ["gw-test"]
+    static let categories = ["gwTest"]
     private(set) var attemptCount = 0
     private(set) var successCount = 0
 
@@ -67,7 +67,7 @@ struct GatewayRunnerTests {
         // Append an event in the gateway's subscribed category
         _ = try await store.append(
             GatewayRunnerTestEvent(value: 42),
-            to: StreamName(category: "gw-test", id: "1"),
+            to: StreamName(category: "gwTest", id: "1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -98,13 +98,13 @@ struct GatewayRunnerTests {
         // Append two events — first will fail, second should still be delivered
         _ = try await store.append(
             GatewayRunnerTestEvent(value: 1),
-            to: StreamName(category: "gw-test", id: "1"),
+            to: StreamName(category: "gwTest", id: "1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
         _ = try await store.append(
             OtherCategoryEvent(),
-            to: StreamName(category: "gw-test", id: "2"),
+            to: StreamName(category: "gwTest", id: "2"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -139,7 +139,7 @@ struct GatewayRunnerTests {
         // Append event in a category the gateway does NOT subscribe to
         _ = try await store.append(
             GatewayRunnerTestEvent(value: 99),
-            to: StreamName(category: "other-category", id: "1"),
+            to: StreamName(category: "otherCategory", id: "1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -147,7 +147,7 @@ struct GatewayRunnerTests {
         // Append event in the subscribed category
         _ = try await store.append(
             GatewayRunnerTestEvent(value: 42),
-            to: StreamName(category: "gw-test", id: "1"),
+            to: StreamName(category: "gwTest", id: "1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )

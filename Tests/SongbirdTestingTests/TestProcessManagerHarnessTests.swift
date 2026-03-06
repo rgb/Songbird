@@ -88,12 +88,12 @@ enum HarnessFulfillmentPM: ProcessManager {
         var paid: Bool
     }
 
-    static let processId = "harness-fulfillment"
+    static let processId = "harnessFulfillment"
     static let initialState = State(total: 0, paid: false)
 
     static let reactions: [AnyReaction<State>] = [
-        reaction(for: HarnessOnOrderPlaced.self, categories: ["harness-order"]),
-        reaction(for: HarnessOnPaymentCharged.self, categories: ["harness-payment"]),
+        reaction(for: HarnessOnOrderPlaced.self, categories: ["harnessOrder"]),
+        reaction(for: HarnessOnPaymentCharged.self, categories: ["harnessPayment"]),
     ]
 }
 
@@ -112,7 +112,7 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         try harness.given(
             HarnessOrderEvent.placed(orderId: "order-1", total: 100),
-            streamName: StreamName(category: "harness-order", id: "order-1")
+            streamName: StreamName(category: "harnessOrder", id: "order-1")
         )
         #expect(
             harness.state(for: "order-1")
@@ -123,7 +123,7 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         try harness.given(
             HarnessOrderEvent.placed(orderId: "order-1", total: 200),
-            streamName: StreamName(category: "harness-order", id: "order-1")
+            streamName: StreamName(category: "harnessOrder", id: "order-1")
         )
         #expect(harness.output.count == 1)
         let first = harness.output[0] as? HarnessFulfillmentEvent
@@ -135,11 +135,11 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         try harness.given(
             HarnessOrderEvent.placed(orderId: "A", total: 50),
-            streamName: StreamName(category: "harness-order", id: "A")
+            streamName: StreamName(category: "harnessOrder", id: "A")
         )
         try harness.given(
             HarnessOrderEvent.placed(orderId: "B", total: 75),
-            streamName: StreamName(category: "harness-order", id: "B")
+            streamName: StreamName(category: "harnessOrder", id: "B")
         )
         #expect(harness.state(for: "A") == HarnessFulfillmentPM.State(total: 50, paid: false))
         #expect(harness.state(for: "B") == HarnessFulfillmentPM.State(total: 75, paid: false))
@@ -149,11 +149,11 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         try harness.given(
             HarnessOrderEvent.placed(orderId: "order-1", total: 300),
-            streamName: StreamName(category: "harness-order", id: "order-1")
+            streamName: StreamName(category: "harnessOrder", id: "order-1")
         )
         try harness.given(
             HarnessPaymentEvent.charged(orderId: "order-1"),
-            streamName: StreamName(category: "harness-payment", id: "order-1")
+            streamName: StreamName(category: "harnessPayment", id: "order-1")
         )
         #expect(
             harness.state(for: "order-1")
@@ -173,7 +173,7 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         try harness.given(
             TestWidgetEvent.created(name: "irrelevant"),
-            streamName: StreamName(category: "harness-order", id: "x")
+            streamName: StreamName(category: "harnessOrder", id: "x")
         )
         #expect(harness.states.isEmpty)
         #expect(harness.output.isEmpty)
@@ -183,7 +183,7 @@ struct TestProcessManagerHarnessTests {
         var harness = TestProcessManagerHarness<HarnessFulfillmentPM>()
         let recorded = try RecordedEvent(
             event: HarnessOrderEvent.placed(orderId: "order-1", total: 150),
-            streamName: StreamName(category: "harness-order", id: "order-1")
+            streamName: StreamName(category: "harnessOrder", id: "order-1")
         )
         try harness.given(recorded)
         #expect(

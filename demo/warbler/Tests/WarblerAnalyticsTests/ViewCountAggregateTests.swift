@@ -39,7 +39,7 @@ struct ViewCountAggregateTests {
 
     @Test func snapshotRoundTrip() async throws {
         let snapshotStore = InMemorySnapshotStore()
-        let stream = StreamName(category: "view-count", id: "v-1")
+        let stream = StreamName(category: "viewCount", id: "v-1")
         let state = ViewCountAggregate.State(totalViews: 500, totalWatchedSeconds: 25000)
 
         try await snapshotStore.save(state, version: 499, for: stream)

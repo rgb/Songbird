@@ -20,7 +20,7 @@ public enum SubscriptionLifecycleProcess: ProcessManager {
         }
     }
 
-    public static let processId = "subscription-lifecycle"
+    public static let processId = "subscriptionLifecycle"
     public static let initialState = State()
 
     public static let reactions: [AnyReaction<State>] = [

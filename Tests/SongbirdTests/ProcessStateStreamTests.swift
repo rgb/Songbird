@@ -58,7 +58,7 @@ struct ProcessStateStreamTests {
         // Pre-populate with an order placed event
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-1", total: 300),
-            to: StreamName(category: "runner-order", id: "order-1"),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -91,7 +91,7 @@ struct ProcessStateStreamTests {
         // Pre-populate with an order placed event
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-1", total: 400),
-            to: StreamName(category: "runner-order", id: "order-1"),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -116,7 +116,7 @@ struct ProcessStateStreamTests {
         // Append a payment charged event
         _ = try await store.append(
             RunnerPaymentEvent.charged(orderId: "order-1"),
-            to: StreamName(category: "runner-payment", id: "order-1"),
+            to: StreamName(category: "runnerPayment", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -136,13 +136,13 @@ struct ProcessStateStreamTests {
         // Append events for two different orders
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-A", total: 100),
-            to: StreamName(category: "runner-order", id: "order-A"),
+            to: StreamName(category: "runnerOrder", id: "order-A"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-B", total: 200),
-            to: StreamName(category: "runner-order", id: "order-B"),
+            to: StreamName(category: "runnerOrder", id: "order-B"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -215,7 +215,7 @@ struct ProcessStateStreamTests {
         let unknownEvent = SubscriptionTestEvent.occurred(value: 999)
         _ = try await store.append(
             unknownEvent,
-            to: StreamName(category: "runner-order", id: "order-1"),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -223,7 +223,7 @@ struct ProcessStateStreamTests {
         // Then append a real order event for this entity
         _ = try await store.append(
             RunnerOrderEvent.placed(orderId: "order-1", total: 500),
-            to: StreamName(category: "runner-order", id: "order-1"),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )

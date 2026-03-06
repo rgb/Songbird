@@ -19,7 +19,7 @@ public enum ViewCountAggregate: Aggregate {
     public typealias Event = ViewCountEvent
     public typealias Failure = Never
 
-    public static let category = "view-count"
+    public static let category = "viewCount"
     public static let initialState = State()
 
     public static func apply(_ state: State, _ event: ViewCountEvent) -> State {

@@ -11,7 +11,7 @@ private struct ServicesTestEvent: Event {
 
 private actor ServicesTestGateway: Gateway {
     let gatewayId = "services-test-gateway"
-    static let categories = ["svc-test"]
+    static let categories = ["svcTest"]
     private(set) var handledEvents: [RecordedEvent] = []
 
     func handle(_ event: RecordedEvent) async throws {
@@ -93,7 +93,7 @@ struct SongbirdServicesTests {
         // Append an event in the gateway's subscribed category
         _ = try await store.append(
             ServicesTestEvent(),
-            to: StreamName(category: "svc-test", id: "1"),
+            to: StreamName(category: "svcTest", id: "1"),
             metadata: EventMetadata(),
             expectedVersion: nil
         )
@@ -143,7 +143,7 @@ struct SongbirdServicesTests {
 
         let inbound = InboundEvent(
             event: ServicesTestEvent(),
-            stream: StreamName(category: "inbound-test", id: "1"),
+            stream: StreamName(category: "inboundTest", id: "1"),
             metadata: EventMetadata()
         )
         injector.yield(inbound)
@@ -152,7 +152,7 @@ struct SongbirdServicesTests {
         try await Task.sleep(for: .milliseconds(100))
 
         let storedEvents = try await store.readStream(
-            StreamName(category: "inbound-test", id: "1"),
+            StreamName(category: "inboundTest", id: "1"),
             from: 0,
             maxCount: 10
         )

@@ -12,7 +12,7 @@ struct GatewayRunnerMetricsTests {
     }
 
     actor SuccessGateway: Gateway {
-        static let categories: [String] = ["gw-metrics"]
+        static let categories: [String] = ["gwMetrics"]
         let gatewayId = "success-gw"
         var handledCount = 0
 
@@ -22,7 +22,7 @@ struct GatewayRunnerMetricsTests {
     }
 
     actor FailingGateway: Gateway {
-        static let categories: [String] = ["gw-metrics"]
+        static let categories: [String] = ["gwMetrics"]
         let gatewayId = "failing-gw"
 
         func handle(_ event: RecordedEvent) async throws {
@@ -50,7 +50,7 @@ struct GatewayRunnerMetricsTests {
 
         _ = try await store.append(
             GatewayMetricsEvent(data: "hello"),
-            to: StreamName(category: "gw-metrics", id: "1"),
+            to: StreamName(category: "gwMetrics", id: "1"),
             metadata: EventMetadata(), expectedVersion: nil
         )
 
@@ -106,7 +106,7 @@ struct GatewayRunnerMetricsTests {
 
         _ = try await store.append(
             GatewayMetricsEvent(data: "hello"),
-            to: StreamName(category: "gw-metrics", id: "1"),
+            to: StreamName(category: "gwMetrics", id: "1"),
             metadata: EventMetadata(), expectedVersion: nil
         )
 

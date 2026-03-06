@@ -100,7 +100,7 @@ private actor FailingEventStore: EventStore {
 @Suite("InjectorRunner")
 struct InjectorRunnerTests {
 
-    let stream = StreamName(category: "injector-test", id: "1")
+    let stream = StreamName(category: "injectorTest", id: "1")
 
     // MARK: - Basic Delivery
 
