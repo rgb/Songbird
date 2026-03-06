@@ -170,11 +170,8 @@ struct AggregateRepositoryTests {
     @Test func executeWithFailedValidation() async throws {
         let (repo, store) = makeRepo()
         // Try to deposit without opening -- should throw .notOpen
-        do {
+        await #expect(throws: BankAccountAggregate.Failure.self) {
             _ = try await repo.execute(Deposit(amount: 100), on: "acct-1", metadata: meta, using: DepositHandler.self)
-            Issue.record("Expected error to be thrown")
-        } catch {
-            // Error was thrown as expected
         }
 
         // No events should have been appended
