@@ -63,6 +63,7 @@ public actor TransportClient {
     private var channel: (any Channel)?
     private var pendingCalls: [UInt64: CheckedContinuation<WireMessage, any Error>] = [:]
     private var nextRequestId: UInt64 = 0
+    private let callTimeout: Duration = .seconds(30)
 
     public init() {
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -111,6 +112,19 @@ public actor TransportClient {
             var buffer = channel.allocator.buffer(capacity: data.count)
             buffer.writeBytes(data)
             channel.writeAndFlush(buffer, promise: nil)
+
+            // Schedule a timeout
+            Task {
+                try? await Task.sleep(for: callTimeout)
+                await self.timeoutPendingCall(requestId: requestId)
+            }
+        }
+    }
+
+    /// Fails a pending call with a timeout error if it hasn't been resolved.
+    private func timeoutPendingCall(requestId: UInt64) {
+        if let continuation = pendingCalls.removeValue(forKey: requestId) {
+            continuation.resume(throwing: SongbirdDistributedError.remoteCallFailed("Call timed out"))
         }
     }
 
