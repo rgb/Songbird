@@ -151,6 +151,30 @@ struct ReadModelStoreTests {
         #expect(runCount == 1)
     }
 
+    @Test func migrationsApplyIncrementally() async throws {
+        let store = try ReadModelStore()
+        nonisolated(unsafe) var callCount = 0
+
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE migration_test_1 (id INTEGER)")
+            callCount += 1
+        }
+        try await store.migrate()
+        #expect(callCount == 1)
+
+        // Register a second migration after the first migrate() call
+        await store.registerMigration { conn in
+            try conn.execute("CREATE TABLE migration_test_2 (id INTEGER)")
+            callCount += 1
+        }
+        try await store.migrate()
+        #expect(callCount == 2)
+
+        // Migrate again — nothing new should run
+        try await store.migrate()
+        #expect(callCount == 2)
+    }
+
     @Test func migrateRunsInOrder() async throws {
         let store = try ReadModelStore()
         nonisolated(unsafe) var order: [Int] = []

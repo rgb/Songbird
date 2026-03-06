@@ -36,4 +36,19 @@ struct TieringServiceTests {
         runTask.cancel()
         // If we get here without hanging, the test passes
     }
+
+    @Test func tieringContinuesWithNonTieredStore() async throws {
+        let store = try ReadModelStore()
+        let service = TieringService(
+            readModel: store,
+            thresholdDays: 1,
+            interval: .milliseconds(50)
+        )
+
+        let task = Task { await service.run() }
+        try await Task.sleep(for: .milliseconds(200))
+        await service.stop()
+        task.cancel()
+        // If we get here without hanging, the service is resilient
+    }
 }
