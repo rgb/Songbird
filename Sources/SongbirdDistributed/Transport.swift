@@ -115,7 +115,7 @@ public actor TransportClient {
             }
             group.addTask {
                 try await Task.sleep(for: self.callTimeout)
-                await self.cancelPendingCall(requestId: requestId)
+                await self.cancelPendingCall(requestId: requestId, error: SongbirdDistributedError.remoteCallFailed("Call timed out"))
                 throw SongbirdDistributedError.remoteCallFailed("Call timed out")
             }
             guard let result = try await group.next() else {
@@ -145,14 +145,14 @@ public actor TransportClient {
                 }
             }
         } onCancel: {
-            Task { await self.cancelPendingCall(requestId: requestId) }
+            Task { await self.cancelPendingCall(requestId: requestId, error: CancellationError()) }
         }
     }
 
-    /// Cancels a pending call by resuming its continuation with a timeout error.
-    private func cancelPendingCall(requestId: UInt64) {
+    /// Cancels a pending call by resuming its continuation with the given error.
+    private func cancelPendingCall(requestId: UInt64, error: any Error) {
         if let continuation = pendingCalls.removeValue(forKey: requestId) {
-            continuation.resume(throwing: SongbirdDistributedError.remoteCallFailed("Call timed out"))
+            continuation.resume(throwing: error)
         }
     }
 
