@@ -3,6 +3,13 @@ import NIOCore
 import Testing
 @testable import SongbirdDistributed
 
+/// Handler that receives calls but never responds -- used to test timeouts.
+struct SilentHandler: WireMessageHandler {
+    func handleMessage(_ message: WireMessage, channel: any Channel) async {
+        // Intentionally do nothing
+    }
+}
+
 /// Echo handler for testing: echoes calls back as results.
 struct EchoHandler: WireMessageHandler {
     func handleMessage(_ message: WireMessage, channel: any Channel) async {
@@ -67,5 +74,37 @@ struct TransportTests {
                 Issue.record("Call \(i) failed")
             }
         }
+    }
+
+    @Test func callTimesOutWhenServerDoesNotRespond() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = TransportServer(socketPath: socketPath, handler: SilentHandler())
+        try await server.start()
+        defer { Task { try await server.stop() } }
+
+        let client = TransportClient(callTimeout: .milliseconds(200))
+        try await client.connect(socketPath: socketPath)
+        defer { Task { try await client.disconnect() } }
+
+        await #expect(throws: SongbirdDistributedError.self) {
+            _ = try await client.call(actorName: "a", targetName: "t", arguments: Data())
+        }
+    }
+
+    @Test func disconnectDoesNotHang() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = TransportServer(socketPath: socketPath, handler: EchoHandler())
+        try await server.start()
+        defer { Task { try await server.stop() } }
+
+        let client = TransportClient()
+        try await client.connect(socketPath: socketPath)
+
+        // Disconnect immediately without any calls
+        try await client.disconnect()
     }
 }
