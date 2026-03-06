@@ -1,5 +1,6 @@
 import Distributed
 import Foundation
+import Logging
 import NIOCore
 
 /// A custom `DistributedActorSystem` for same-machine IPC over Unix domain sockets.
@@ -227,6 +228,7 @@ final class LockedBox<T: Sendable>: @unchecked Sendable {
 
 /// Bridges incoming wire messages to the actor system's call dispatch.
 struct ActorSystemMessageHandler: WireMessageHandler {
+    private static let logger = Logger(label: "songbird.actor-system.handler")
     let system: SongbirdActorSystem
 
     func handleMessage(_ message: WireMessage, channel: any Channel) async {
@@ -248,7 +250,26 @@ struct ActorSystemMessageHandler: WireMessageHandler {
             response = .error(.init(requestId: call.requestId, message: String(describing: error)))
         }
 
-        guard let responseData = try? JSONEncoder().encode(response) else { return }
+        let responseData: Data
+        do {
+            responseData = try JSONEncoder().encode(response)
+        } catch {
+            Self.logger.error("Failed to encode response", metadata: [
+                "requestId": "\(call.requestId)",
+                "error": "\(error)",
+            ])
+            // Send an error response so the client doesn't hang
+            let fallback = WireMessage.error(.init(
+                requestId: call.requestId,
+                message: "Internal: response encoding failed"
+            ))
+            if let fallbackData = try? JSONEncoder().encode(fallback) {
+                var buffer = channel.allocator.buffer(capacity: fallbackData.count)
+                buffer.writeBytes(fallbackData)
+                channel.writeAndFlush(buffer, promise: nil)
+            }
+            return
+        }
         var buffer = channel.allocator.buffer(capacity: responseData.count)
         buffer.writeBytes(responseData)
         channel.writeAndFlush(buffer, promise: nil)
