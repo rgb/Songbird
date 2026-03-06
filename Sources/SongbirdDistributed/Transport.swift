@@ -117,7 +117,9 @@ public actor TransportClient {
                 await self.cancelPendingCall(requestId: requestId)
                 throw SongbirdDistributedError.remoteCallFailed("Call timed out")
             }
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                throw SongbirdDistributedError.remoteCallFailed("Call cancelled")
+            }
             group.cancelAll()
             return result
         }
