@@ -274,6 +274,8 @@ extension ReadModelStore {
     public func tierProjections(olderThan thresholdDays: Int) throws -> Int {
         guard isTiered else { return 0 }
 
+        precondition(thresholdDays > 0, "thresholdDays must be positive")
+
         let whereClause = "\"recorded_at\" < CURRENT_TIMESTAMP::TIMESTAMP - INTERVAL '\(thresholdDays) days'"
         var totalMoved = 0
         let escapedSchema = escapeSQLIdentifier(coldSchemaName)

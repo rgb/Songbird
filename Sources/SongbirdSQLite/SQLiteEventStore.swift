@@ -364,7 +364,9 @@ public actor SQLiteEventStore: EventStore {
         guard let eventId = UUID(uuidString: eventIdStr) else {
             throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
         }
-        let timestamp = iso8601Formatter.date(from: timestampStr) ?? Date()
+        guard let timestamp = iso8601Formatter.date(from: timestampStr) else {
+            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: autoincPos)
+        }
 
         return RecordedEvent(
             id: eventId,
