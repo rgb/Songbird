@@ -3,17 +3,20 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
     public let registry: EventTypeRegistry
     public let snapshotStore: (any SnapshotStore)?
     public let snapshotPolicy: SnapshotPolicy
+    public let batchSize: Int
 
     public init(
         store: any EventStore,
         registry: EventTypeRegistry,
         snapshotStore: (any SnapshotStore)? = nil,
-        snapshotPolicy: SnapshotPolicy = .none
+        snapshotPolicy: SnapshotPolicy = .none,
+        batchSize: Int = 1000
     ) {
         self.store = store
         self.registry = registry
         self.snapshotStore = snapshotStore
         self.snapshotPolicy = snapshotPolicy
+        self.batchSize = batchSize
     }
 
     public func load(id: String) async throws -> (state: A.State, version: Int64) {
@@ -30,7 +33,6 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         }
 
         // Fold events from the snapshot version (or 0 if no snapshot)
-        let batchSize = 1000
         var currentPosition = fromPosition
         var version: Int64 = fromPosition > 0 ? fromPosition - 1 : -1
         while true {
