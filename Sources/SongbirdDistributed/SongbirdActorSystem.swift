@@ -208,7 +208,7 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
 // MARK: - LockedBox
 
 /// A simple thread-safe wrapper for mutable state.
-final class LockedBox<T>: @unchecked Sendable {
+final class LockedBox<T: Sendable>: @unchecked Sendable {
     private var value: T
     private let lock = NSLock()
 
