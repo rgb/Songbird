@@ -253,14 +253,15 @@ public struct PostgresEventStore: EventStore, Sendable {
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
         var previousHash = "genesis"
         var verified = 0
-        var offset = 0
+        var lastGlobalPosition: Int64 = 0  // BIGSERIAL starts at 1, so 0 means "before first"
 
         while true {
             let rows = try await client.query("""
                 SELECT global_position, event_type, stream_name, data::text, to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), event_hash
                 FROM events
+                WHERE global_position > \(lastGlobalPosition)
                 ORDER BY global_position ASC
-                LIMIT \(batchSize) OFFSET \(offset)
+                LIMIT \(batchSize)
                 """)
 
             var batchCount = 0
@@ -268,6 +269,7 @@ public struct PostgresEventStore: EventStore, Sendable {
                 in rows.decode((Int64, String, String, String, String, String?).self)
             {
                 batchCount += 1
+                lastGlobalPosition = globalPos
 
                 let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(dataStr)\0\(timestamp)"
                 let computedHash = SHA256.hash(data: Data(hashInput.utf8))
@@ -287,8 +289,6 @@ public struct PostgresEventStore: EventStore, Sendable {
             }
 
             if batchCount < batchSize { break }
-            offset += batchSize
-
             await Task.yield()
         }
 
