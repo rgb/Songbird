@@ -45,11 +45,16 @@ public actor SQLiteEventStore: EventStore {
     // MARK: - Migrations
 
     private static func schemaVersion(_ db: Connection) throws -> Int {
-        let tableExists = try db.scalar(
+        guard let tableExists = try db.scalar(
             "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='schema_version'"
-        ) as! Int64
+        ) as? Int64 else {
+            return 0
+        }
         if tableExists == 0 { return 0 }
-        return try Int(db.scalar("SELECT version FROM schema_version") as! Int64)
+        guard let version = try db.scalar("SELECT version FROM schema_version") as? Int64 else {
+            throw SQLiteEventStoreError.corruptedRow(column: "version", globalPosition: nil)
+        }
+        return Int(version)
     }
 
     private static func migrate(_ db: Connection) throws {
@@ -250,11 +255,14 @@ public actor SQLiteEventStore: EventStore {
             var batchCount = 0
             for row in rows {
                 batchCount += 1
-                let globalPos = row[0] as! Int64
-                let eventType = row[1] as! String
-                let streamName = row[2] as! String
-                let data = row[3] as! String
-                let timestamp = row[4] as! String
+                guard let globalPos = row[0] as? Int64,
+                      let eventType = row[1] as? String,
+                      let streamName = row[2] as? String,
+                      let data = row[3] as? String,
+                      let timestamp = row[4] as? String
+                else {
+                    throw SQLiteEventStoreError.corruptedRow(column: "chain_verification", globalPosition: nil)
+                }
                 let storedHash = row[5] as? String
 
                 let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(data)\0\(timestamp)"
