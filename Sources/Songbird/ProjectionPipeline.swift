@@ -108,6 +108,16 @@ public actor ProjectionPipeline {
                     self.timeoutWaiter(id: waiterId)
                 }
                 waiters[waiterId] = Waiter(position: globalPosition, continuation: cont, timeoutTask: timeoutTask)
+
+                // If the task was cancelled between withTaskCancellationHandler and here,
+                // the onCancel handler already fired but found no waiter to cancel.
+                // Check now and clean up immediately to avoid a leaked continuation.
+                if Task.isCancelled {
+                    if let waiter = waiters.removeValue(forKey: waiterId) {
+                        waiter.timeoutTask.cancel()
+                        waiter.continuation.resume(throwing: CancellationError())
+                    }
+                }
             }
         } onCancel: {
             Task { await self.cancelWaiter(id: waiterId) }
