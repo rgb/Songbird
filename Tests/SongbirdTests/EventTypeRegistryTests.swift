@@ -54,7 +54,25 @@ struct EventTypeRegistryTests {
             timestamp: Date()
         )
 
-        #expect(throws: (any Error).self) {
+        #expect(throws: EventTypeRegistryError.self) {
+            _ = try registry.decode(recorded)
+        }
+    }
+
+    @Test func decodeCorruptedDataThrows() throws {
+        let registry = EventTypeRegistry()
+        registry.register(AccountEvent.self, eventTypes: ["Deposited"])
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "account", id: "1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "Deposited",
+            data: Data("not json".utf8),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        #expect(throws: DecodingError.self) {
             _ = try registry.decode(recorded)
         }
     }
