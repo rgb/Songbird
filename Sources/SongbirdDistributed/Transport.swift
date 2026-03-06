@@ -127,11 +127,24 @@ public actor TransportClient {
 
     /// Registers a pending call continuation and sends the encoded message over the channel.
     private func sendAndAwaitResponse(requestId: UInt64, data: Data, channel: any Channel) async throws -> WireMessage {
-        try await withCheckedThrowingContinuation { continuation in
-            pendingCalls[requestId] = continuation
-            var buffer = channel.allocator.buffer(capacity: data.count)
-            buffer.writeBytes(data)
-            channel.writeAndFlush(buffer, promise: nil)
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                pendingCalls[requestId] = continuation
+                var buffer = channel.allocator.buffer(capacity: data.count)
+                buffer.writeBytes(data)
+                channel.writeAndFlush(buffer, promise: nil)
+
+                // Guard against cancellation racing with registration.
+                // If the task was cancelled before the continuation was registered,
+                // the onCancel handler found nothing to cancel. Clean up now.
+                if Task.isCancelled {
+                    if let cont = pendingCalls.removeValue(forKey: requestId) {
+                        cont.resume(throwing: CancellationError())
+                    }
+                }
+            }
+        } onCancel: {
+            Task { await self.cancelPendingCall(requestId: requestId) }
         }
     }
 
@@ -158,7 +171,14 @@ public actor TransportClient {
 
     /// Disconnects from the server.
     public func disconnect() async throws {
+        // Resume all pending continuations before closing
+        for (_, continuation) in pendingCalls {
+            continuation.resume(throwing: SongbirdDistributedError.notConnected("disconnected"))
+        }
+        pendingCalls.removeAll()
+
         try await channel?.close()
+        channel = nil
         try await group.shutdownGracefully()
     }
 }
