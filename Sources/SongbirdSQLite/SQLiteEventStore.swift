@@ -187,25 +187,25 @@ public actor SQLiteEventStore: EventStore {
             rows = try db.prepare("""
                 SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
                 FROM events
-                WHERE (global_position - 1) >= ?
+                WHERE global_position >= ?
                 ORDER BY global_position ASC
                 LIMIT ?
-            """, globalPosition, maxCount)
+            """, globalPosition + 1, maxCount)
         } else if categories.count == 1 {
             rows = try db.prepare("""
                 SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
                 FROM events
-                WHERE stream_category = ? AND (global_position - 1) >= ?
+                WHERE stream_category = ? AND global_position >= ?
                 ORDER BY global_position ASC
                 LIMIT ?
-            """, categories[0], globalPosition, maxCount)
+            """, categories[0], globalPosition + 1, maxCount)
         } else {
             let placeholders = categories.map { _ in "?" }.joined(separator: ", ")
-            let bindings: [Binding?] = categories.map { $0 as Binding? } + [globalPosition as Binding?, maxCount as Binding?]
+            let bindings: [Binding?] = categories.map { $0 as Binding? } + [(globalPosition + 1) as Binding?, maxCount as Binding?]
             rows = try db.prepare("""
                 SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
                 FROM events
-                WHERE stream_category IN (\(placeholders)) AND (global_position - 1) >= ?
+                WHERE stream_category IN (\(placeholders)) AND global_position >= ?
                 ORDER BY global_position ASC
                 LIMIT ?
             """, bindings)
