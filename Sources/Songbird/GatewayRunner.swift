@@ -1,3 +1,5 @@
+import Metrics
+
 /// An actor that runs a `Gateway` by subscribing to its declared categories and calling
 /// `handle(_:)` for each event.
 ///
@@ -57,9 +59,32 @@ public actor GatewayRunner<G: Gateway> {
         )
 
         for try await event in subscription {
+            let start = ContinuousClock.now
             do {
                 try await gateway.handle(event)
+                let elapsed = ContinuousClock.now - start
+                Metrics.Timer(
+                    label: "songbird_gateway_delivery_duration_seconds",
+                    dimensions: [("gateway_id", gateway.gatewayId)]
+                ).recordNanoseconds(elapsed.nanoseconds)
+                Counter(
+                    label: "songbird_gateway_delivery_total",
+                    dimensions: [("gateway_id", gateway.gatewayId), ("status", "success")]
+                ).increment()
             } catch {
+                let elapsed = ContinuousClock.now - start
+                Metrics.Timer(
+                    label: "songbird_gateway_delivery_duration_seconds",
+                    dimensions: [("gateway_id", gateway.gatewayId)]
+                ).recordNanoseconds(elapsed.nanoseconds)
+                Counter(
+                    label: "songbird_gateway_delivery_total",
+                    dimensions: [("gateway_id", gateway.gatewayId), ("status", "failure")]
+                ).increment()
+                Counter(
+                    label: "songbird_subscription_errors_total",
+                    dimensions: [("subscriber_id", gateway.gatewayId)]
+                ).increment()
                 // Gateway errors are swallowed and do not stop the subscription.
                 // The gateway is responsible for its own retry/logging logic.
             }
