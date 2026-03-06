@@ -97,7 +97,7 @@ public actor SQLiteEventStore: EventStore {
         let streamStr = stream.description
         let category = stream.category
 
-        var result: RecordedEvent!
+        var result: RecordedEvent?
 
         try db.transaction(.immediate) {
             // Optimistic concurrency check (inside IMMEDIATE transaction — write-locked)
@@ -150,6 +150,10 @@ public actor SQLiteEventStore: EventStore {
             )
         }
 
+        guard let result else {
+            // This should never happen -- the transaction either throws or assigns result.
+            throw SQLiteEventStoreError.encodingFailed
+        }
         return result
     }
 
