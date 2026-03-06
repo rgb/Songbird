@@ -23,11 +23,22 @@ public struct PostgresKeyStore: KeyStore, Sendable {
         let keyBytes = newKey.withUnsafeBytes { Data($0) }
         let layerStr = layer.rawValue
 
+        // Use ON CONFLICT to handle concurrent inserts safely.
+        // If another caller inserted between our SELECT and INSERT,
+        // this is a no-op and we fall through to re-read.
         try await client.query("""
             INSERT INTO encryption_keys (reference, layer, key_data, created_at)
             VALUES (\(reference), \(layerStr), \(keyBytes), NOW())
+            ON CONFLICT (reference, layer) DO NOTHING
             """)
 
+        // Re-read to handle the race: if our INSERT was a no-op,
+        // this returns the key the other caller inserted.
+        if let existing = try await existingKey(for: reference, layer: layer) {
+            return existing
+        }
+
+        // Should never happen: we just inserted or another caller did
         return newKey
     }
 
