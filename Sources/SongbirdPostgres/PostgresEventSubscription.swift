@@ -38,9 +38,10 @@ private actor NotificationSignal {
 
     /// Called from the listen task when a notification arrives.
     private func notifyWaiters() {
-        for (id, continuation) in waiters {
+        let pending = waiters
+        waiters.removeAll()
+        for (_, continuation) in pending {
             continuation.resume(returning: true)
-            waiters.removeValue(forKey: id)
         }
     }
 
@@ -71,9 +72,10 @@ private actor NotificationSignal {
     /// Any pending waiters are resumed with `false`.
     func stop() async {
         listenTask?.cancel()
-        for (id, continuation) in waiters {
+        let pending = waiters
+        waiters.removeAll()
+        for (_, continuation) in pending {
             continuation.resume(returning: false)
-            waiters.removeValue(forKey: id)
         }
         if let connection {
             try? await connection.close()
