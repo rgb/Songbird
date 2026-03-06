@@ -63,10 +63,11 @@ public actor TransportClient {
     private var channel: (any Channel)?
     private var pendingCalls: [UInt64: CheckedContinuation<WireMessage, any Error>] = [:]
     private var nextRequestId: UInt64 = 0
-    private let callTimeout: Duration = .seconds(30)
+    private let callTimeout: Duration
 
-    public init() {
+    public init(callTimeout: Duration = .seconds(30)) {
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.callTimeout = callTimeout
     }
 
     /// Connects to a Unix domain socket server.
@@ -107,22 +108,33 @@ public actor TransportClient {
             throw SongbirdDistributedError.connectionFailed("Failed to encode message: \(error)")
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
+        return try await withThrowingTaskGroup(of: WireMessage.self) { group in
+            group.addTask {
+                try await self.sendAndAwaitResponse(requestId: requestId, data: data, channel: channel)
+            }
+            group.addTask {
+                try await Task.sleep(for: self.callTimeout)
+                await self.cancelPendingCall(requestId: requestId)
+                throw SongbirdDistributedError.remoteCallFailed("Call timed out")
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+    }
+
+    /// Registers a pending call continuation and sends the encoded message over the channel.
+    private func sendAndAwaitResponse(requestId: UInt64, data: Data, channel: any Channel) async throws -> WireMessage {
+        try await withCheckedThrowingContinuation { continuation in
             pendingCalls[requestId] = continuation
             var buffer = channel.allocator.buffer(capacity: data.count)
             buffer.writeBytes(data)
             channel.writeAndFlush(buffer, promise: nil)
-
-            // Schedule a timeout
-            Task {
-                try? await Task.sleep(for: callTimeout)
-                await self.timeoutPendingCall(requestId: requestId)
-            }
         }
     }
 
-    /// Fails a pending call with a timeout error if it hasn't been resolved.
-    private func timeoutPendingCall(requestId: UInt64) {
+    /// Cancels a pending call by resuming its continuation with a timeout error.
+    private func cancelPendingCall(requestId: UInt64) {
         if let continuation = pendingCalls.removeValue(forKey: requestId) {
             continuation.resume(throwing: SongbirdDistributedError.remoteCallFailed("Call timed out"))
         }
