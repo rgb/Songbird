@@ -52,6 +52,11 @@ public actor ReadModelStore {
         self.executor = DispatchSerialQueue(label: "songbird.read-model-store")
         self.storageMode = storageMode
         self.isTiered = storageMode.isTiered
+        if case .tiered(let config) = storageMode {
+            self.coldSchemaName = config.schemaName
+        } else {
+            self.coldSchemaName = "lake"
+        }
         if let path {
             self.database = try Database(store: .file(at: URL(fileURLWithPath: path)))
         } else {
@@ -59,14 +64,18 @@ public actor ReadModelStore {
         }
         self.connection = try database.connect()
         if case .tiered(let config) = storageMode {
-            try Self.attachDuckLake(connection: connection, config: config)
+            try Self.attachDuckLake(
+                connection: connection, config: config, schemaName: coldSchemaName
+            )
         }
     }
 
     /// The DuckDB schema name for the cold tier.
-    static let coldSchemaName = "lake"
+    let coldSchemaName: String
 
-    private static func attachDuckLake(connection: Connection, config: DuckLakeConfig) throws {
+    private static func attachDuckLake(
+        connection: Connection, config: DuckLakeConfig, schemaName: String
+    ) throws {
         try connection.execute("INSTALL ducklake")
         try connection.execute("LOAD ducklake")
         if case .s3(let s3Config) = config.backend {
@@ -74,8 +83,9 @@ public actor ReadModelStore {
         }
         let catalogPath = escapeSQLString(config.catalogPath)
         let dataPath = escapeSQLString(config.dataPath)
+        let escapedSchema = escapeSQLIdentifier(schemaName)
         try connection.execute(
-            "ATTACH 'ducklake:\(catalogPath)' AS \(Self.coldSchemaName) (DATA_PATH '\(dataPath)')"
+            "ATTACH 'ducklake:\(catalogPath)' AS \"\(escapedSchema)\" (DATA_PATH '\(dataPath)')"
         )
     }
 
@@ -110,8 +120,8 @@ public actor ReadModelStore {
     }
 
     /// Enables tiered mode for testing without requiring DuckLake.
-    /// Call after attaching an in-memory database as "lake" via:
-    /// `try store.withConnection { conn in try conn.execute("ATTACH ':memory:' AS lake") }`
+    /// Call after attaching an in-memory database using the store's `coldSchemaName` via:
+    /// `try store.withConnection { conn in try conn.execute("ATTACH ':memory:' AS \(store.coldSchemaName)") }`
     func enableTieredModeForTesting() {
         isTiered = true
     }
@@ -181,16 +191,17 @@ public actor ReadModelStore {
     /// identical column structure, then creates a view (`v_<table>`) that spans
     /// both the hot and cold tiers via `UNION ALL`.
     private func createColdTierMirrors() throws {
+        let escapedSchema = escapeSQLIdentifier(coldSchemaName)
         for table in _registeredTables {
             let escapedTable = escapeSQLIdentifier(table)
             let escapedViewName = escapeSQLIdentifier("v_\(table)")
             // Create cold-tier mirror with identical schema (empty)
             try connection.execute(
-                "CREATE TABLE IF NOT EXISTS \(Self.coldSchemaName).\"\(escapedTable)\" AS SELECT * FROM \"\(escapedTable)\" WHERE FALSE"
+                "CREATE TABLE IF NOT EXISTS \"\(escapedSchema)\".\"\(escapedTable)\" AS SELECT * FROM \"\(escapedTable)\" WHERE FALSE"
             )
             // Create UNION ALL view spanning both tiers
             try connection.execute(
-                "CREATE OR REPLACE VIEW \"\(escapedViewName)\" AS SELECT * FROM \"\(escapedTable)\" UNION ALL SELECT * FROM \(Self.coldSchemaName).\"\(escapedTable)\""
+                "CREATE OR REPLACE VIEW \"\(escapedViewName)\" AS SELECT * FROM \"\(escapedTable)\" UNION ALL SELECT * FROM \"\(escapedSchema)\".\"\(escapedTable)\""
             )
         }
     }
@@ -265,11 +276,12 @@ extension ReadModelStore {
 
         let whereClause = "\"recorded_at\" < CURRENT_TIMESTAMP::TIMESTAMP - INTERVAL '\(thresholdDays) days'"
         var totalMoved = 0
+        let escapedSchema = escapeSQLIdentifier(coldSchemaName)
 
         for table in _registeredTables {
             let escapedTable = escapeSQLIdentifier(table)
             let hotTable = "\"\(escapedTable)\""
-            let coldTable = "\(Self.coldSchemaName).\"\(escapedTable)\""
+            let coldTable = "\"\(escapedSchema)\".\"\(escapedTable)\""
 
             let countResult = try connection.query(
                 "SELECT COUNT(*) FROM \(hotTable) WHERE \(whereClause)"

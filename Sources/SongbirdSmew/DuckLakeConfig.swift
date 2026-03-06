@@ -28,15 +28,25 @@ public struct DuckLakeConfig: Sendable {
     /// Storage backend.
     public let backend: Backend
 
+    /// Schema name for the cold tier in DuckDB (default: "lake").
+    public let schemaName: String
+
     /// Creates a DuckLake configuration.
     ///
     /// - Parameters:
     ///   - catalogPath: Path to the DuckLake metadata catalog database.
     ///   - dataPath: Directory for Parquet data files.
     ///   - backend: Storage backend (default: `.local`).
-    public init(catalogPath: String, dataPath: String, backend: Backend = .local) {
+    ///   - schemaName: Schema name for the cold tier (default: `"lake"`).
+    public init(
+        catalogPath: String,
+        dataPath: String,
+        backend: Backend = .local,
+        schemaName: String = "lake"
+    ) {
         self.catalogPath = catalogPath
         self.dataPath = dataPath
         self.backend = backend
+        self.schemaName = schemaName
     }
 }

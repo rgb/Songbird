@@ -1,11 +1,12 @@
 @testable import SongbirdSmew
 
 /// Creates a ReadModelStore with a simulated cold tier for testing.
-/// Uses `ATTACH ':memory:' AS lake` instead of real DuckLake.
+/// Uses `ATTACH ':memory:' AS <coldSchemaName>` instead of real DuckLake.
 func makeTieredStore() async throws -> ReadModelStore {
     let store = try ReadModelStore()
+    let schemaName = await store.coldSchemaName
     try await store.withConnection { conn in
-        try conn.execute("ATTACH ':memory:' AS lake")
+        try conn.execute("ATTACH ':memory:' AS \"\(schemaName)\"")
     }
     await store.enableTieredModeForTesting()
     return store
