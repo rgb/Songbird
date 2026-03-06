@@ -36,18 +36,21 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
     private let positionStore: any PositionStore
     private let batchSize: Int
     private let tickInterval: Duration
+    private let maxCacheSize: Int
     private var stateCache: [String: PM.State] = [:]
 
     public init(
         store: any EventStore,
         positionStore: any PositionStore,
         batchSize: Int = 100,
-        tickInterval: Duration = .milliseconds(100)
+        tickInterval: Duration = .milliseconds(100),
+        maxCacheSize: Int = 10_000
     ) {
         self.store = store
         self.positionStore = positionStore
         self.batchSize = batchSize
         self.tickInterval = tickInterval
+        self.maxCacheSize = maxCacheSize
     }
 
     // MARK: - Lifecycle
@@ -103,6 +106,16 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
 
             // Update state cache
             stateCache[route] = newState
+
+            // Evict oldest entries if cache is too large.
+            // Dictionary doesn't preserve insertion order, so we remove
+            // arbitrary entries. Evicted entities fall back to PM.initialState.
+            if stateCache.count > maxCacheSize {
+                let excess = stateCache.count - maxCacheSize
+                for key in stateCache.keys.prefix(excess) {
+                    stateCache.removeValue(forKey: key)
+                }
+            }
 
             // Append output events
             let outputStream = StreamName(category: PM.processId, id: route)
