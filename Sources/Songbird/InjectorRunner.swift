@@ -38,6 +38,7 @@ public actor InjectorRunner<I: Injector> {
     /// Throws if the sequence itself throws a terminal error.
     public func run() async throws {
         for try await inbound in injector.events() {
+            let injectorDimensions = [("injector_id", injector.injectorId)]
             let start = ContinuousClock.now
             let result: Result<RecordedEvent, any Error>
             do {
@@ -50,21 +51,23 @@ public actor InjectorRunner<I: Injector> {
                 result = .success(recorded)
                 let elapsed = ContinuousClock.now - start
                 Metrics.Timer(
-                    label: "songbird_injector_append_duration_seconds"
+                    label: "songbird_injector_append_duration_seconds",
+                    dimensions: injectorDimensions
                 ).recordNanoseconds(elapsed.nanoseconds)
                 Counter(
                     label: "songbird_injector_append_total",
-                    dimensions: [("status", "success")]
+                    dimensions: injectorDimensions + [("status", "success")]
                 ).increment()
             } catch {
                 result = .failure(error)
                 let elapsed = ContinuousClock.now - start
                 Metrics.Timer(
-                    label: "songbird_injector_append_duration_seconds"
+                    label: "songbird_injector_append_duration_seconds",
+                    dimensions: injectorDimensions
                 ).recordNanoseconds(elapsed.nanoseconds)
                 Counter(
                     label: "songbird_injector_append_total",
-                    dimensions: [("status", "failure")]
+                    dimensions: injectorDimensions + [("status", "failure")]
                 ).increment()
                 logger.error("Injector append failed",
                     metadata: [
