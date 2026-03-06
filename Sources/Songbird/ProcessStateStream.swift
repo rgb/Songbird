@@ -97,7 +97,7 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
                     )
 
                     for record in batch {
-                        applyIfMatching(record)
+                        try applyIfMatching(record)
                         globalPosition = record.globalPosition + 1
                     }
 
@@ -120,7 +120,7 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
                 if !batch.isEmpty {
                     // Process all events in the batch, tracking whether any matched
                     for record in batch {
-                        let matched = applyIfMatching(record)
+                        let matched = try applyIfMatching(record)
                         globalPosition = record.globalPosition + 1
                         if matched {
                             return state
@@ -140,7 +140,7 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
         /// Tries each reaction's `tryRoute` for this event. If one matches the instance ID,
         /// applies the reaction's `handle` to fold state. Returns true if a match was found.
         @discardableResult
-        private mutating func applyIfMatching(_ record: RecordedEvent) -> Bool {
+        private mutating func applyIfMatching(_ record: RecordedEvent) throws -> Bool {
             for reaction in PM.reactions {
                 let route: String?
                 do {
@@ -151,14 +151,10 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
 
                 guard route == instanceId else { continue }
 
-                // This event is for our instance -- apply it
-                do {
-                    let (newState, _) = try reaction.handle(state, record)
-                    state = newState
-                } catch {
-                    // Handle error silently -- event matched route but failed to process.
-                    // This could happen if the event payload is corrupted.
-                }
+                // This event is for our instance -- apply it.
+                // Errors propagate to the caller so events are not silently lost.
+                let (newState, _) = try reaction.handle(state, record)
+                state = newState
 
                 return true
             }
