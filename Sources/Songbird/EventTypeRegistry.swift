@@ -4,10 +4,16 @@ public enum EventTypeRegistryError: Error, Equatable {
     case unregisteredEventType(String)
 }
 
+/// `EventTypeRegistry` is safe to read and write from any isolation domain.
+///
 /// `@unchecked Sendable` is justified because all mutable state (`decoders`, `upcasts`)
 /// is protected by an `NSLock`. Every read and write acquires the lock first, ensuring
 /// thread-safe access from any isolation domain. The class is `final` to prevent subclasses
 /// from breaking this invariant.
+///
+/// **Important:** All registration (`register`, `registerUpcast`) should happen
+/// at startup before any calls to `decode`. The registry does not guarantee
+/// atomicity between registration and concurrent decoding.
 public final class EventTypeRegistry: @unchecked Sendable {
     private let lock = NSLock()
     private var decoders: [String: @Sendable (Data) throws -> any Event] = [:]
@@ -16,11 +22,11 @@ public final class EventTypeRegistry: @unchecked Sendable {
     public init() {}
 
     public func register<E: Event>(_ type: E.Type, eventTypes: [String]) {
-        lock.lock()
-        defer { lock.unlock() }
-        for eventType in eventTypes {
-            decoders[eventType] = { data in
-                try JSONDecoder().decode(E.self, from: data)
+        lock.withLock {
+            for eventType in eventTypes {
+                decoders[eventType] = { data in
+                    try JSONDecoder().decode(E.self, from: data)
+                }
             }
         }
     }
@@ -56,29 +62,26 @@ public final class EventTypeRegistry: @unchecked Sendable {
             "\(U.NewEvent.self) is version \(U.NewEvent.version), expected \(U.OldEvent.version + 1)"
         )
 
-        lock.lock()
-        defer { lock.unlock() }
-
-        // Register decoder for the old event type string
-        decoders[oldEventType] = { data in
-            try JSONDecoder().decode(U.OldEvent.self, from: data)
-        }
-
-        // Store the upcast transform keyed by the old event type string
-        upcasts[oldEventType] = { @Sendable (event: any Event) -> any Event in
-            guard let oldEvent = event as? U.OldEvent else {
-                // Registry misconfiguration: the decoder produced a type that doesn't match the upcast.
-                // This is a programming error, but we return the event unchanged rather than crashing.
-                return event
+        lock.withLock {
+            // Register decoder for the old event type string
+            decoders[oldEventType] = { data in
+                try JSONDecoder().decode(U.OldEvent.self, from: data)
             }
-            return upcast.upcast(oldEvent)
+
+            // Store the upcast transform keyed by the old event type string
+            upcasts[oldEventType] = { @Sendable (event: any Event) -> any Event in
+                guard let oldEvent = event as? U.OldEvent else {
+                    // Registry misconfiguration: the decoder produced a type that doesn't match the upcast.
+                    // This is a programming error, but we return the event unchanged rather than crashing.
+                    return event
+                }
+                return upcast.upcast(oldEvent)
+            }
         }
     }
 
     public func decode(_ recorded: RecordedEvent) throws -> any Event {
-        lock.lock()
-        let decoder = decoders[recorded.eventType]
-        lock.unlock()
+        let decoder = lock.withLock { decoders[recorded.eventType] }
 
         guard let decoder else {
             throw EventTypeRegistryError.unregisteredEventType(recorded.eventType)
@@ -87,18 +90,14 @@ public final class EventTypeRegistry: @unchecked Sendable {
         var event = try decoder(recorded.data)
 
         // Walk the upcast chain until no more upcasts exist.
-        // After each upcast, look up the next using the new event's eventType.
-        lock.lock()
-        var nextUpcast = upcasts[recorded.eventType]
-        lock.unlock()
-
-        while let upcastFn = nextUpcast {
+        // Registration is expected to happen at startup before any decoding,
+        // so the dictionaries are effectively immutable during decode.
+        var currentEventType = recorded.eventType
+        while true {
+            let upcastFn = lock.withLock { upcasts[currentEventType] }
+            guard let upcastFn else { break }
             event = upcastFn(event)
-
-            let newEventType = event.eventType
-            lock.lock()
-            nextUpcast = upcasts[newEventType]
-            lock.unlock()
+            currentEventType = event.eventType
         }
 
         return event
