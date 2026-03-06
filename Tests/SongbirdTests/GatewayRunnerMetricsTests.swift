@@ -3,6 +3,7 @@ import Testing
 @testable import Songbird
 @testable import SongbirdTesting
 
+extension MetricsTestSuite {
 @Suite(.serialized)
 struct GatewayRunnerMetricsTests {
     struct GatewayMetricsEvent: Event {
@@ -132,4 +133,5 @@ struct GatewayRunnerMetricsTests {
         )
         #expect(deliveryTimer?.values.count == 1)
     }
+}
 }

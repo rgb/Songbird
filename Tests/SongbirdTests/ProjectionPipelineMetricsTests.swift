@@ -3,6 +3,7 @@ import Testing
 @testable import Songbird
 @testable import SongbirdTesting
 
+extension MetricsTestSuite {
 @Suite(.serialized)
 struct ProjectionPipelineMetricsTests {
     struct MetricsTestEvent: Event {
@@ -74,4 +75,5 @@ struct ProjectionPipelineMetricsTests {
         let depth = TestMetricsFactory.shared.gauge("songbird_projection_queue_depth")
         #expect(depth != nil)
     }
+}
 }

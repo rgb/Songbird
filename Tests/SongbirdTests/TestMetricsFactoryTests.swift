@@ -2,6 +2,7 @@ import Metrics
 import Testing
 @testable import SongbirdTesting
 
+extension MetricsTestSuite {
 @Suite(.serialized)
 struct TestMetricsFactoryTests {
     init() {
@@ -54,4 +55,5 @@ struct TestMetricsFactoryTests {
         #expect(TestMetricsFactory.shared.timer("reset_timer")?.values.isEmpty == true)
         #expect(TestMetricsFactory.shared.gauge("reset_gauge")?.lastValue == nil)
     }
+}
 }

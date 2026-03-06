@@ -3,6 +3,7 @@ import Testing
 @testable import Songbird
 @testable import SongbirdTesting
 
+extension MetricsTestSuite {
 @Suite(.serialized)
 struct MetricsEventStoreTests {
     struct TestEvent: Event {
@@ -177,4 +178,5 @@ struct MetricsEventStoreTests {
         )
         #expect(timer == nil)
     }
+}
 }
