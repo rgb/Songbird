@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import Metrics
 
 public enum ProjectionPipelineError: Error {
@@ -6,6 +7,7 @@ public enum ProjectionPipelineError: Error {
 }
 
 public actor ProjectionPipeline {
+    private let logger = Logger(label: "songbird.projection-pipeline")
     private var projectors: [any Projector] = []
     private let stream: AsyncStream<RecordedEvent>
     private let continuation: AsyncStream<RecordedEvent>.Continuation
@@ -54,8 +56,13 @@ public actor ProjectionPipeline {
                 do {
                     try await projector.apply(event)
                 } catch {
-                    // Projection errors are logged but do not stop the pipeline.
-                    // In production, integrate with os.Logger or a logging framework.
+                    logger.error("Projection error",
+                        metadata: [
+                            "projector_id": "\(projector.projectorId)",
+                            "event_type": "\(event.eventType)",
+                            "global_position": "\(event.globalPosition)",
+                            "error": "\(error)",
+                        ])
                 }
                 let elapsed = ContinuousClock.now - start
                 Metrics.Timer(

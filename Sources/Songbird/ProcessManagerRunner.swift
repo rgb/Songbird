@@ -1,3 +1,5 @@
+import Logging
+
 /// An actor that runs a `ProcessManager` by subscribing to its declared categories,
 /// dispatching events through the two-phase `AnyReaction` flow, managing per-entity state,
 /// and appending output events to the event store.
@@ -29,6 +31,7 @@
 /// task.cancel()
 /// ```
 public actor ProcessManagerRunner<PM: ProcessManager> {
+    private let logger = Logger(label: "songbird.process-manager-runner")
     private let store: any EventStore
     private let positionStore: any PositionStore
     private let batchSize: Int
@@ -84,8 +87,11 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
             do {
                 route = try reaction.tryRoute(recorded)
             } catch {
-                // Decoding failed -- skip this reaction (event type matched by string
-                // but the payload didn't match the expected type)
+                logger.trace("Reaction route decode skipped",
+                    metadata: [
+                        "process_id": "\(PM.processId)",
+                        "event_type": "\(recorded.eventType)",
+                    ])
                 continue
             }
 

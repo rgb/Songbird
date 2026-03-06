@@ -18,6 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-metrics.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", exact: "0.15.3"),
         .package(url: "git@github.com:rgb/smew.git", exact: "0.34.4"),
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
@@ -33,6 +34,7 @@ let package = Package(
             name: "Songbird",
             dependencies: [
                 .product(name: "Metrics", package: "swift-metrics"),
+                .product(name: "Logging", package: "swift-log"),
             ]
         ),
 
@@ -60,6 +62,7 @@ let package = Package(
             dependencies: [
                 "Songbird",
                 .product(name: "Smew", package: "smew"),
+                .product(name: "Logging", package: "swift-log"),
             ]
         ),
 

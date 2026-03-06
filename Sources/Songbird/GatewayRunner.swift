@@ -1,3 +1,4 @@
+import Logging
 import Metrics
 
 /// An actor that runs a `Gateway` by subscribing to its declared categories and calling
@@ -25,6 +26,7 @@ import Metrics
 /// task.cancel()
 /// ```
 public actor GatewayRunner<G: Gateway> {
+    private let logger = Logger(label: "songbird.gateway-runner")
     private let gateway: G
     private let store: any EventStore
     private let positionStore: any PositionStore
@@ -85,8 +87,13 @@ public actor GatewayRunner<G: Gateway> {
                     label: "songbird_subscription_errors_total",
                     dimensions: [("subscriber_id", gateway.gatewayId)]
                 ).increment()
-                // Gateway errors are swallowed and do not stop the subscription.
-                // The gateway is responsible for its own retry/logging logic.
+                logger.error("Gateway delivery failed",
+                    metadata: [
+                        "gateway_id": "\(gateway.gatewayId)",
+                        "event_type": "\(event.eventType)",
+                        "global_position": "\(event.globalPosition)",
+                        "error": "\(error)",
+                    ])
             }
         }
     }

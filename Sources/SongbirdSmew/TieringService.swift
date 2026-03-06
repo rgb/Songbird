@@ -1,3 +1,5 @@
+import Logging
+
 /// Background service that periodically migrates old projection rows from the
 /// hot tier (DuckDB native) to the cold tier (DuckLake/Parquet).
 ///
@@ -10,6 +12,7 @@
 /// task.cancel()
 /// ```
 public actor TieringService {
+    private let logger = Logger(label: "songbird.tiering-service")
     private let readModel: ReadModelStore
     private let thresholdDays: Int
     private let interval: Duration
@@ -38,7 +41,7 @@ public actor TieringService {
             do {
                 try await readModel.tierProjections(olderThan: thresholdDays)
             } catch {
-                // Log and continue — tiering is best-effort
+                logger.warning("Tiering pass failed", metadata: ["error": "\(error)"])
             }
             do {
                 try await Task.sleep(for: interval)
