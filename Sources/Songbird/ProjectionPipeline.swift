@@ -1,4 +1,5 @@
 import Foundation
+import Metrics
 
 public enum ProjectionPipelineError: Error {
     case timeout
@@ -49,14 +50,22 @@ public actor ProjectionPipeline {
     public func run() async {
         for await event in stream {
             for projector in projectors {
+                let start = ContinuousClock.now
                 do {
                     try await projector.apply(event)
                 } catch {
                     // Projection errors are logged but do not stop the pipeline.
                     // In production, integrate with os.Logger or a logging framework.
                 }
+                let elapsed = ContinuousClock.now - start
+                Metrics.Timer(
+                    label: "songbird_projection_process_duration_seconds",
+                    dimensions: [("projector_id", projector.projectorId)]
+                ).recordNanoseconds(elapsed.nanoseconds)
             }
             projectedPosition = event.globalPosition
+            Gauge(label: "songbird_projection_lag")
+                .record(Double(enqueuedPosition - projectedPosition))
             resumeWaiters()
         }
         resumeAllWaiters()
@@ -71,6 +80,8 @@ public actor ProjectionPipeline {
     public func enqueue(_ event: RecordedEvent) {
         enqueuedPosition = event.globalPosition
         continuation.yield(event)
+        Gauge(label: "songbird_projection_queue_depth")
+            .record(Double(enqueuedPosition - projectedPosition))
     }
 
     // MARK: - Waiting
