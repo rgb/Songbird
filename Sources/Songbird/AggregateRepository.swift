@@ -58,6 +58,10 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         let (state, version) = try await load(id: id)
         let events = try handler.handle(command, given: state)
         let stream = StreamName(category: A.category, id: id)
+        // NOTE: Multi-event commands are not atomic -- if a version conflict occurs
+        // mid-batch, earlier events in the batch will already be persisted. This is
+        // acceptable for single-event commands (the common case). For true atomicity,
+        // the EventStore protocol would need an appendBatch method.
         var recorded: [RecordedEvent] = []
         for (index, event) in events.enumerated() {
             let result = try await store.append(
