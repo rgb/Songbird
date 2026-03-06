@@ -45,7 +45,7 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
     private let clients = LockedBox<[String: TransportClient]>([:])
 
     /// Transport server (if this system is a worker).
-    nonisolated(unsafe) private var server: TransportServer?
+    private let serverBox = LockedBox<TransportServer?>(nil)
 
     public init(processName: String) {
         self.processName = processName
@@ -57,7 +57,7 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
     public func startServer(socketPath: String) async throws {
         let server = TransportServer(socketPath: socketPath, handler: ActorSystemMessageHandler(system: self))
         try await server.start()
-        self.server = server
+        serverBox.withLock { $0 = server }
     }
 
     /// Connects to a remote worker process.
@@ -69,8 +69,9 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
 
     /// Stops the server and disconnects all clients.
     public func shutdown() async throws {
-        if let server {
+        if let server = serverBox.withLock({ $0 }) {
             try await server.stop()
+            serverBox.withLock { $0 = nil }
         }
         let allClients = clients.withLock { dict -> [TransportClient] in
             let values = Array(dict.values)

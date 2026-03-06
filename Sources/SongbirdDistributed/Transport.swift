@@ -16,7 +16,7 @@ public protocol WireMessageHandler: Sendable {
 public final class TransportServer: Sendable {
     private let group: MultiThreadedEventLoopGroup
     private let handler: any WireMessageHandler
-    nonisolated(unsafe) private var serverChannel: (any Channel)?
+    private let serverChannelBox = LockedBox<(any Channel)?>(nil)
     private let socketPath: String
 
     public init(socketPath: String, handler: any WireMessageHandler) {
@@ -41,12 +41,14 @@ public final class TransportServer: Sendable {
                 }
             }
 
-        self.serverChannel = try await bootstrap.bind(unixDomainSocketPath: socketPath).get()
+        let channel = try await bootstrap.bind(unixDomainSocketPath: socketPath).get()
+        serverChannelBox.withLock { $0 = channel }
     }
 
     /// Stops the server and cleans up the socket file.
     public func stop() async throws {
-        try await serverChannel?.close()
+        let channel = serverChannelBox.withLock { $0 }
+        try await channel?.close()
         try? FileManager.default.removeItem(atPath: socketPath)
         try await group.shutdownGracefully()
     }
