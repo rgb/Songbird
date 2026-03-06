@@ -19,6 +19,26 @@ private actor ServicesTestGateway: Gateway {
     }
 }
 
+private enum ServicesTestReaction: EventReaction {
+    typealias PMState = Void
+    typealias Input = ServicesTestEvent
+
+    static let eventTypes = ["ServicesTestEvent"]
+
+    static func route(_ event: ServicesTestEvent) -> String? { nil }
+    static func apply(_ state: Void, _ event: ServicesTestEvent) -> Void { () }
+}
+
+private enum ServicesTestPM: ProcessManager {
+    typealias State = Void
+
+    static let processId = "services-test-pm"
+    static let initialState: Void = ()
+    static let reactions: [AnyReaction<Void>] = [
+        reaction(for: ServicesTestReaction.self, categories: ["svcTest"]),
+    ]
+}
+
 private actor ServicesTestInjector: Injector {
     let injectorId = "services-test-injector"
 
@@ -123,6 +143,37 @@ struct SongbirdServicesTests {
 
         serviceTask.cancel()
         // Should complete without hanging
+        try? await serviceTask.value
+    }
+
+    @Test func registerProcessManager() async throws {
+        let store = InMemoryEventStore()
+        let pipeline = ProjectionPipeline()
+        let positionStore = InMemoryPositionStore()
+
+        var services = SongbirdServices(
+            eventStore: store,
+            projectionPipeline: pipeline,
+            positionStore: positionStore,
+            eventRegistry: EventTypeRegistry()
+        )
+        services.registerProcessManager(ServicesTestPM.self)
+
+        let serviceTask = Task { try await services.run() }
+
+        // Append an event in the PM's subscribed category
+        _ = try await store.append(
+            ServicesTestEvent(),
+            to: StreamName(category: "svcTest", id: "1"),
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        // Wait for the PM runner to poll and process
+        try await Task.sleep(for: .milliseconds(100))
+
+        // If we got here without error, registration and execution work
+        serviceTask.cancel()
         try? await serviceTask.value
     }
 

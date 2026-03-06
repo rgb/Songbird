@@ -49,6 +49,23 @@ struct JSONValueTests {
         #expect(decoded == value)
     }
 
+    @Test func arrayRoundTrip() throws {
+        let value = JSONValue.array([.string("a"), .int(1), .bool(true), .null])
+        let data = try JSONEncoder().encode(value)
+        let decoded = try JSONDecoder().decode(JSONValue.self, from: data)
+        #expect(decoded == value)
+    }
+
+    @Test func nestedObjectAndArrayRoundTrip() throws {
+        let value = JSONValue.object([
+            "items": .array([.int(1), .int(2)]),
+            "nested": .object(["key": .string("val")]),
+        ])
+        let data = try JSONEncoder().encode(value)
+        let decoded = try JSONDecoder().decode(JSONValue.self, from: data)
+        #expect(decoded == value)
+    }
+
     @Test func parseEventJSON() throws {
         let json = Data("""
             {"name":"Alice","email":"a@b.com","amount":2300}
