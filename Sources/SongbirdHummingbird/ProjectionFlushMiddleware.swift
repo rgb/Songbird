@@ -18,7 +18,13 @@ public struct ProjectionFlushMiddleware<Context: RequestContext>: RouterMiddlewa
         next: (Request, Context) async throws -> Response
     ) async throws -> Response {
         let response = try await next(request, context)
-        try? await pipeline.waitForIdle()
+        do {
+            try await pipeline.waitForIdle()
+        } catch {
+            // waitForIdle throws timeout or cancellation — both are safe to ignore
+            // because the HTTP response is already computed. We're just waiting for
+            // projections to catch up for read-after-write consistency.
+        }
         return response
     }
 }
