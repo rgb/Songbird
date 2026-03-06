@@ -170,6 +170,15 @@ public actor TransportClient {
         }
     }
 
+    /// Called when the channel closes unexpectedly (server crash, network error).
+    func handleUnexpectedDisconnect() {
+        for (_, continuation) in pendingCalls {
+            continuation.resume(throwing: SongbirdDistributedError.notConnected("connection lost"))
+        }
+        pendingCalls.removeAll()
+        channel = nil
+    }
+
     /// Disconnects from the server.
     public func disconnect() async throws {
         // Resume all pending continuations before closing
@@ -294,5 +303,17 @@ final class ClientInboundHandler: ChannelInboundHandler, @unchecked Sendable {
         Task {
             await client.receiveResponse(message)
         }
+    }
+
+    func channelInactive(context: ChannelHandlerContext) {
+        Task {
+            await client.handleUnexpectedDisconnect()
+        }
+        context.fireChannelInactive()
+    }
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        Self.logger.warning("Channel error", metadata: ["error": "\(error)"])
+        context.close(promise: nil)
     }
 }
