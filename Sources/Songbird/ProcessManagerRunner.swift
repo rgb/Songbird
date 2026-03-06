@@ -69,7 +69,18 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
         )
 
         for try await event in subscription {
-            try await processEvent(event)
+            do {
+                try await processEvent(event)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                logger.error("Process manager event handling failed",
+                    metadata: [
+                        "process_id": "\(PM.processId)",
+                        "event_type": "\(event.eventType)",
+                        "error": "\(error)",
+                    ])
+            }
         }
     }
 
