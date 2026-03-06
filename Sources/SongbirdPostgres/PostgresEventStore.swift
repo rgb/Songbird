@@ -294,10 +294,13 @@ public struct PostgresEventStore: EventStore, Sendable {
 
     // MARK: - Test Support
 
-    /// Execute raw SQL. Intended for test scenarios (e.g., corrupting data to test chain verification).
+    #if DEBUG
+    /// Execute raw SQL. **Test-only** — used for scenarios like corrupting data
+    /// to test chain verification. Not available in release builds.
     public func rawExecute(_ sql: String) async throws {
         try await client.query(PostgresQuery(unsafeSQL: sql))
     }
+    #endif
 
     // MARK: - Private Helpers
 
