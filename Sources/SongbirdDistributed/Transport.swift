@@ -164,6 +164,18 @@ public actor TransportClient {
 }
 
 // MARK: - NIO Handlers
+//
+// These handlers are marked @unchecked Sendable because NIO channel handlers
+// must be classes, and NIO's own ByteToMessageHandler has Sendable conformance
+// explicitly unavailable (a known SwiftNIO upstream issue). Our handlers are
+// either stateless (MessageFrameDecoder, MessageFrameEncoder) or hold only
+// Sendable references (ServerInboundHandler holds `any WireMessageHandler`,
+// ClientInboundHandler holds `TransportClient` which is an actor). The
+// @unchecked Sendable is safe because NIO guarantees handler methods are
+// called on the channel's EventLoop thread.
+//
+// Build warning "Conformance of 'ByteToMessageHandler<Decoder>' to 'Sendable'
+// is unavailable" comes from SwiftNIO upstream and cannot be fixed in our code.
 
 /// Length-prefixed frame decoder: reads 4-byte big-endian length + payload.
 final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
