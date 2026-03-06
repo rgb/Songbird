@@ -28,7 +28,7 @@ public actor ReadModelStore {
 
     /// The underlying DuckDB connection. Marked `nonisolated(unsafe)` because all access
     /// is serialized through this actor's custom `DispatchSerialQueue` executor.
-    nonisolated(unsafe) let connection: Connection
+    nonisolated(unsafe) private let connection: Connection
 
     private let executor: DispatchSerialQueue
 
@@ -294,8 +294,10 @@ extension ReadModelStore {
             // INSERT and DELETE are not wrapped in a single transaction because DuckDB
             // does not support cross-database transactions (hot and cold are separate
             // attached databases). If the process crashes between INSERT and DELETE,
-            // the UNION ALL view may show duplicates until the next tiering pass
-            // cleans them up (the DELETE would find 0 matching rows).
+            // the UNION ALL view will show duplicate rows. These duplicates persist
+            // until a manual cleanup is performed (e.g., DROP and re-tier). For most
+            // read-model use cases, duplicates are tolerable since projections are
+            // rebuildable. Consider adding deduplication if exact-once matters.
             try connection.execute(
                 "INSERT INTO \(coldTable) SELECT * FROM \(hotTable) WHERE \(whereClause)"
             )
