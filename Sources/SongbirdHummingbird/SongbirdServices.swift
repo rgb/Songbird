@@ -1,3 +1,4 @@
+import Logging
 import Songbird
 
 /// A type that can be run as a long-lived background service.
@@ -44,6 +45,7 @@ public struct SongbirdServices: Sendable {
     public let positionStore: any PositionStore
     public let eventRegistry: EventTypeRegistry
 
+    private let logger = Logger(label: "songbird.services")
     private var projectors: [any Projector] = []
     private var runners: [any Runnable] = []
 
@@ -125,6 +127,12 @@ public struct SongbirdServices: Sendable {
     /// - The pipeline is stopped via `pipeline.stop()`
     /// - Process manager, gateway, and injector runners are cancelled (their event loops exit)
     public func run() async throws {
+        logger.info("Starting SongbirdServices",
+            metadata: [
+                "projector_count": "\(projectors.count)",
+                "runner_count": "\(runners.count)",
+            ])
+
         for projector in projectors {
             await projectionPipeline.register(projector)
         }
