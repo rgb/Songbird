@@ -43,6 +43,7 @@ public struct PostgresEventStore: EventStore, Sendable {
 
         var globalPosition: Int64 = 0
         var position: Int64 = 0
+        var normalizedTimestamp = ""
 
         do {
             try await client.withTransaction(logger: logger) { connection in
@@ -69,7 +70,6 @@ public struct PostgresEventStore: EventStore, Sendable {
                     logger: logger
                 )
                 var normalizedData = ""
-                var normalizedTimestamp = ""
                 for try await (gp, dataText, ts) in insertRows.decode((Int64, String, String).self) {
                     globalPosition = gp - 1  // 0-based (BIGSERIAL starts at 1)
                     normalizedData = dataText
@@ -121,6 +121,9 @@ public struct PostgresEventStore: EventStore, Sendable {
             throw error
         }
 
+        let iso8601Formatter = ISO8601DateFormatter()
+        let returnedTimestamp = iso8601Formatter.date(from: normalizedTimestamp) ?? now
+
         return RecordedEvent(
             id: eventId,
             streamName: stream,
@@ -129,7 +132,7 @@ public struct PostgresEventStore: EventStore, Sendable {
             eventType: eventType,
             data: eventData,
             metadata: metadata,
-            timestamp: now
+            timestamp: returnedTimestamp
         )
     }
 
@@ -275,7 +278,7 @@ public struct PostgresEventStore: EventStore, Sendable {
                     return ChainVerificationResult(
                         intact: false,
                         eventsVerified: verified,
-                        brokenAtSequence: globalPos
+                        brokenAtSequence: globalPos - 1
                     )
                 }
 

@@ -236,7 +236,7 @@ struct SQLiteEventStoreTests {
         let result = try await store.verifyChain()
         #expect(result.intact == false)
         #expect(result.eventsVerified == 1)
-        #expect(result.brokenAtSequence == 2)
+        #expect(result.brokenAtSequence == 1)
     }
 
     // MARK: - Read Categories (Multi-Category)

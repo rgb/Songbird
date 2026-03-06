@@ -278,7 +278,7 @@ public actor SQLiteEventStore: EventStore {
                     return ChainVerificationResult(
                         intact: false,
                         eventsVerified: verified,
-                        brokenAtSequence: globalPos
+                        brokenAtSequence: globalPos - 1
                     )
                 }
 

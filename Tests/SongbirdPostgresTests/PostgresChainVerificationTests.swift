@@ -55,7 +55,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") str
             let result = try await store.verifyChain()
             #expect(result.intact == false)
             #expect(result.eventsVerified == 1)
-            #expect(result.brokenAtSequence == 2)
+            #expect(result.brokenAtSequence == 1)
         }
     }
 }}
