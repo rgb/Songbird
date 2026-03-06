@@ -159,6 +159,67 @@ struct MetricsEventStoreTests {
         #expect(appendCounter == nil || appendCounter?.totalValue == 0)
     }
 
+    @Test func nonConflictErrorEmitsErrorCounterAndDuration() async throws {
+        let failingStore = FailingAppendStore()
+        let metricsStore = MetricsEventStore(inner: failingStore)
+        let stream = StreamName(category: "order", id: "1")
+
+        do {
+            _ = try await metricsStore.append(
+                TestEvent(data: "test"), to: stream,
+                metadata: EventMetadata(), expectedVersion: nil
+            )
+        } catch {}
+
+        // Error counter should increment
+        let errorCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_append_errors_total",
+            dimensions: [("stream_category", "order")]
+        )
+        #expect(errorCounter?.totalValue == 1)
+
+        // Duration should still be recorded on error
+        let timer = TestMetricsFactory.shared.timer(
+            "songbird_event_store_append_duration_seconds",
+            dimensions: [("stream_category", "order")]
+        )
+        #expect(timer != nil)
+        #expect(timer!.values.count == 1)
+
+        // Conflict counter should NOT increment
+        let conflictCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_version_conflict_total",
+            dimensions: [("stream_category", "order")]
+        )
+        #expect(conflictCounter == nil || conflictCounter?.totalValue == 0)
+    }
+
+    @Test func versionConflictRecordsDuration() async throws {
+        let store = makeStore()
+        let stream = StreamName(category: "order", id: "1")
+
+        _ = try await store.append(
+            TestEvent(data: "first"), to: stream,
+            metadata: EventMetadata(), expectedVersion: nil
+        )
+        TestMetricsFactory.shared.reset()
+
+        do {
+            _ = try await store.append(
+                TestEvent(data: "conflict"), to: stream,
+                metadata: EventMetadata(), expectedVersion: 99
+            )
+        } catch {}
+
+        // Duration should be recorded even for version conflicts
+        let timer = TestMetricsFactory.shared.timer(
+            "songbird_event_store_append_duration_seconds",
+            dimensions: [("stream_category", "order")]
+        )
+        #expect(timer != nil)
+        #expect(timer!.values.count == 1)
+    }
+
     @Test func streamVersionEmitsNoMetrics() async throws {
         let store = makeStore()
         let stream = StreamName(category: "order", id: "1")
@@ -178,5 +239,21 @@ struct MetricsEventStoreTests {
         )
         #expect(timer == nil)
     }
+}
+
+// MARK: - Test Helpers
+
+private struct StoreError: Error {}
+
+/// An event store that always throws a non-VersionConflictError on append.
+private actor FailingAppendStore: EventStore {
+    func append(_ event: some Event, to stream: StreamName, metadata: EventMetadata, expectedVersion: Int64?) async throws -> RecordedEvent {
+        throw StoreError()
+    }
+
+    func readStream(_ stream: StreamName, from position: Int64, maxCount: Int) async throws -> [RecordedEvent] { [] }
+    func readCategories(_ categories: [String], from globalPosition: Int64, maxCount: Int) async throws -> [RecordedEvent] { [] }
+    func readLastEvent(in stream: StreamName) async throws -> RecordedEvent? { nil }
+    func streamVersion(_ stream: StreamName) async throws -> Int64 { -1 }
 }
 }
