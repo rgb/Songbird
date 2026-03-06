@@ -20,6 +20,7 @@ public enum SongbirdPostgresMigrations {
     /// Useful if the caller wants to combine Songbird migrations with application-specific ones.
     public static func register(in migrations: DatabaseMigrations) async {
         await migrations.add(CreateEventsTables())
+        await migrations.add(CreateEncryptionKeysTable())
     }
 }
 
@@ -79,5 +80,29 @@ struct CreateEventsTables: DatabaseMigration {
     }
 
     var name: String { "CreateEventsTables" }
+    var group: DatabaseMigrationGroup { .default }
+}
+
+struct CreateEncryptionKeysTable: DatabaseMigration {
+    func apply(connection: PostgresConnection, logger: Logger) async throws {
+        try await connection.query("""
+            CREATE TABLE IF NOT EXISTS encryption_keys (
+                reference   TEXT NOT NULL,
+                layer       TEXT NOT NULL,
+                key_data    BYTEA NOT NULL,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at  TIMESTAMPTZ,
+                PRIMARY KEY (reference, layer)
+            )
+            """,
+            logger: logger
+        )
+    }
+
+    func revert(connection: PostgresConnection, logger: Logger) async throws {
+        try await connection.query("DROP TABLE IF EXISTS encryption_keys", logger: logger)
+    }
+
+    var name: String { "CreateEncryptionKeysTable" }
     var group: DatabaseMigrationGroup { .default }
 }

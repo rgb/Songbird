@@ -1,0 +1,71 @@
+import CryptoKit
+import Testing
+
+@testable import Songbird
+@testable import SongbirdPostgres
+
+extension AllPostgresTests { @Suite("PostgresKeyStore") struct KeyStoreTests {
+
+    @Test func getOrCreateReturnsSameKey() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            let key1 = try await store.key(for: "entity-1", layer: .pii)
+            let key2 = try await store.key(for: "entity-1", layer: .pii)
+            #expect(key1 == key2)
+        }
+    }
+
+    @Test func differentEntitiesGetDifferentKeys() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            let key1 = try await store.key(for: "entity-1", layer: .pii)
+            let key2 = try await store.key(for: "entity-2", layer: .pii)
+            #expect(key1 != key2)
+        }
+    }
+
+    @Test func deleteKeyMakesItUnavailable() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            _ = try await store.key(for: "entity-1", layer: .pii)
+            try await store.deleteKey(for: "entity-1", layer: .pii)
+            let found = try await store.existingKey(for: "entity-1", layer: .pii)
+            #expect(found == nil)
+        }
+    }
+
+    @Test func keyPersistsAcrossLookups() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            let created = try await store.key(for: "entity-1", layer: .pii)
+            let found = try await store.existingKey(for: "entity-1", layer: .pii)
+            #expect(found == created)
+        }
+    }
+
+    @Test func differentLayersAreIndependent() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            let piiKey = try await store.key(for: "entity-1", layer: .pii)
+            let retKey = try await store.key(for: "entity-1", layer: .retention)
+            #expect(piiKey != retKey)
+            try await store.deleteKey(for: "entity-1", layer: .pii)
+            #expect(try await store.hasKey(for: "entity-1", layer: .retention) == true)
+        }
+    }
+
+    @Test func hasKeyReturnsFalseAfterDelete() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            _ = try await store.key(for: "entity-1", layer: .pii)
+            try await store.deleteKey(for: "entity-1", layer: .pii)
+            #expect(try await store.hasKey(for: "entity-1", layer: .pii) == false)
+        }
+    }
+}}

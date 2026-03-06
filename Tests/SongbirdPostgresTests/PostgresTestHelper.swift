@@ -108,11 +108,12 @@ enum PostgresTestHelper {
         return await containerState.makeConnectionConfiguration()
     }
 
-    /// Cleans all Songbird tables (events, subscriber_positions, snapshots) for test isolation.
+    /// Cleans all Songbird tables for test isolation.
     /// Call this at the start of each test to ensure a clean state.
     static func cleanTables(client: PostgresClient) async throws {
         try await client.query("TRUNCATE events RESTART IDENTITY CASCADE")
         try await client.query("TRUNCATE subscriber_positions")
         try await client.query("TRUNCATE snapshots")
+        try await client.query("TRUNCATE encryption_keys")
     }
 }
