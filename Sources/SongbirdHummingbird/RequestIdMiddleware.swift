@@ -5,6 +5,8 @@ import Hummingbird
 public struct RequestIdMiddleware: RouterMiddleware {
     public typealias Context = SongbirdRequestContext
 
+    /// Force unwrap is safe: "X-Request-ID" is a compile-time constant that is a valid
+    /// HTTP field name per RFC 9110 (alphabetic characters and hyphens only).
     static let headerName = HTTPField.Name("X-Request-ID")!
 
     public init() {}
