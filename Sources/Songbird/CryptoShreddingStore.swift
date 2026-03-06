@@ -138,7 +138,10 @@ extension CryptoShreddingStore {
     /// AES-256-GCM encrypt, returns base64-encoded (nonce + ciphertext + tag).
     private func encrypt(_ plaintext: Data, using key: SymmetricKey) throws -> String {
         let sealed = try AES.GCM.seal(plaintext, using: key)
-        return sealed.combined!.base64EncodedString()
+        guard let combined = sealed.combined else {
+            throw CryptoShreddingError.sealFailure
+        }
+        return combined.base64EncodedString()
     }
 
     /// AES-256-GCM decrypt from base64-encoded combined data.
@@ -176,7 +179,9 @@ extension CryptoShreddingStore {
                 return .null // retention expired
             }
             let innerCiphertextData = try decrypt(outerCiphertext, using: retKey)
-            let innerCiphertext = String(data: innerCiphertextData, encoding: .utf8)!
+            guard let innerCiphertext = String(data: innerCiphertextData, encoding: .utf8) else {
+                throw CryptoShreddingError.invalidCiphertext
+            }
 
             // Inner layer: PII
             guard let piiKey = try await keyStore.existingKey(for: entityId, layer: .pii) else {
@@ -247,4 +252,5 @@ extension Array where Element: Sendable {
 
 public enum CryptoShreddingError: Error {
     case invalidCiphertext
+    case sealFailure
 }
