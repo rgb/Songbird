@@ -203,7 +203,7 @@ extension CryptoShreddingStore {
             return record // not crypto-shreddable
         }
 
-        let entityId = record.streamName.id ?? record.streamName.description
+        let entityId = record.metadata.piiReferenceKey ?? record.streamName.id ?? record.streamName.description
         var fields = try JSONDecoder().decode([String: JSONValue].self, from: record.data)
 
         for (fieldName, _) in protection {
