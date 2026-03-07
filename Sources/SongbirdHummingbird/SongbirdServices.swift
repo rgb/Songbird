@@ -20,9 +20,9 @@ extension InjectorRunner: Runnable {}
 ///
 /// `SongbirdServices` is a mutable struct (matching Hummingbird's `Router` pattern) that
 /// you configure before starting the application. Register projectors, process managers,
-/// gateways, and injectors, then pass it to a `ServiceGroup` or `Application` (via its
-/// `services` parameter). Injectors, gateways, process managers, and the projection
-/// pipeline all run concurrently in the task group.
+/// gateways, and injectors, then call `run()` to start all services. Injectors, gateways,
+/// process managers, and the projection pipeline all run concurrently in the task group.
+/// Cancel the task to stop all services.
 ///
 /// ```swift
 /// var services = SongbirdServices(
@@ -33,11 +33,11 @@ extension InjectorRunner: Runnable {}
 /// )
 /// services.registerProjector(balanceProjector)
 /// services.registerProcessManager(FulfillmentPM.self, tickInterval: .seconds(1))
-/// services.registerGateway(webhookNotifier, tickInterval: .seconds(1))
-/// services.registerInjector(githubPoller)
 ///
-/// let app = Application(router: router, services: [services])
-/// try await app.runService()
+/// let serviceTask = Task { try await services.run() }
+///
+/// // Later: cancel stops all services
+/// serviceTask.cancel()
 /// ```
 public struct SongbirdServices: Sendable {
     public let eventStore: any EventStore
