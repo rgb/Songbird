@@ -163,6 +163,7 @@ public actor SQLiteEventStore: EventStore {
         from position: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
+        precondition(maxCount > 0, "maxCount must be positive")
         let rows = try db.prepare("""
             SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
             FROM events
@@ -181,6 +182,7 @@ public actor SQLiteEventStore: EventStore {
         from globalPosition: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
+        precondition(maxCount > 0, "maxCount must be positive")
         let rows: Statement
         if categories.isEmpty {
             rows = try db.prepare("""
@@ -243,6 +245,7 @@ public actor SQLiteEventStore: EventStore {
     // MARK: - Chain Verification
 
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
+        precondition(batchSize > 0, "batchSize must be positive")
         var previousHash = HashChain.genesisSeed
         var verified = 0
         var lastGlobalPosition: Int64 = 0  // AUTOINCREMENT starts at 1, so 0 means "before first"

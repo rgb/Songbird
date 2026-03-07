@@ -270,6 +270,7 @@ public struct PostgresEventStore: EventStore, Sendable {
     // MARK: - Chain Verification
 
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
+        precondition(batchSize > 0, "batchSize must be positive")
         var previousHash = HashChain.genesisSeed
         var verified = 0
         var lastGlobalPosition: Int64 = 0  // BIGSERIAL starts at 1, so 0 means "before first"
