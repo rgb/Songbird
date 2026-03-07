@@ -50,6 +50,30 @@ struct ProjectionFlushMiddlewareTests {
         await pipelineTask.value
     }
 
+    @Test func returnsResponseEvenWhenPipelineIsNotRunning() async throws {
+        // Pipeline is created but never run — waitForIdle will return immediately
+        // because enqueuedPosition < 0. But if an event were enqueued without run(),
+        // waitForIdle would time out. The middleware catches all errors from
+        // waitForIdle, so the HTTP response is always returned regardless.
+        let pipeline = ProjectionPipeline()
+
+        let router = Router(context: SongbirdRequestContext.self)
+        router.addMiddleware {
+            ProjectionFlushMiddleware<SongbirdRequestContext>(pipeline: pipeline)
+        }
+        router.get("/test") { _, _ -> String in
+            // Enqueue an event that will never be projected (pipeline not running)
+            await pipeline.enqueue(try RecordedEvent(event: FlushTestEvent()))
+            return "ok"
+        }
+        let app = Application(router: router)
+
+        try await app.test(.router) { client in
+            let response = try await client.execute(uri: "/test", method: .get)
+            #expect(response.status == .ok)
+        }
+    }
+
     @Test func worksWithAnyRequestContext() async throws {
         let pipeline = ProjectionPipeline()
         let pipelineTask = Task { await pipeline.run() }

@@ -37,7 +37,7 @@ public actor TieringService {
     /// Runs the tiering loop until `stop()` is called or the task is cancelled.
     public func run() async {
         isRunning = true
-        while isRunning {
+        while isRunning && !Task.isCancelled {
             do {
                 try await readModel.tierProjections(olderThan: thresholdDays)
             } catch {

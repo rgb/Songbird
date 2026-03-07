@@ -115,7 +115,11 @@ public actor ProcessManagerRunner<PM: ProcessManager> {
             let currentState = stateCache[route] ?? PM.initialState
             let (newState, output) = try reaction.handle(currentState, recorded)
 
-            // Update state cache
+            // Update state cache BEFORE appending output events.
+            // This is intentional: the subscription position advances regardless of
+            // output success, so the PM must track "I've seen this event" in its state
+            // even if the output append fails. Otherwise, a failed output would leave
+            // the state at initialState while the input event is never redelivered.
             stateCache[route] = newState
 
             // Evict oldest entries if cache is too large.

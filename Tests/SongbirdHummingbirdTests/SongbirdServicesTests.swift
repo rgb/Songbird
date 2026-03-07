@@ -172,7 +172,15 @@ struct SongbirdServicesTests {
         // Wait for the PM runner to poll and process
         try await Task.sleep(for: .milliseconds(100))
 
-        // If we got here without error, registration and execution work
+        // Verify the event was persisted in the store
+        let storedEvents = try await store.readStream(
+            StreamName(category: "svcTest", id: "1"),
+            from: 0,
+            maxCount: 10
+        )
+        #expect(storedEvents.count == 1)
+        #expect(storedEvents[0].eventType == "ServicesTestEvent")
+
         serviceTask.cancel()
         try? await serviceTask.value
     }

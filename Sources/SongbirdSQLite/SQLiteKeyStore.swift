@@ -18,7 +18,7 @@ public actor SQLiteKeyStore: KeyStore {
     /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
     private let executor: DispatchSerialQueue
-    private let iso8601Formatter = ISO8601DateFormatter()
+
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
         executor.asUnownedSerialExecutor()
@@ -67,11 +67,11 @@ public actor SQLiteKeyStore: KeyStore {
         let newKey = SymmetricKey(size: .bits256)
         let keyData = newKey.withUnsafeBytes { Data($0) }
         let now = Date()
-        let nowStr = iso8601Formatter.string(from: now)
+        let nowStr = now.formatted(.iso8601)
         let expiresAtStr: String? = expiresAfter.map { duration in
             let (seconds, attoseconds) = duration.components
             let totalSeconds = Double(seconds) + Double(attoseconds) / 1e18
-            return iso8601Formatter.string(from: now + totalSeconds)
+            return (now + totalSeconds).formatted(.iso8601)
         }
 
         // Delete any expired key so the INSERT below can succeed.
@@ -101,7 +101,7 @@ public actor SQLiteKeyStore: KeyStore {
     }
 
     public func existingKey(for reference: String, layer: KeyLayer) async throws -> SymmetricKey? {
-        let nowStr = iso8601Formatter.string(from: Date())
+        let nowStr = Date.now.formatted(.iso8601)
         let rows = try db.prepare(
             "SELECT key_data FROM encryption_keys WHERE reference = ? AND layer = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1",
             reference, layer.rawValue, nowStr
@@ -124,7 +124,7 @@ public actor SQLiteKeyStore: KeyStore {
     }
 
     public func hasKey(for reference: String, layer: KeyLayer) async throws -> Bool {
-        let nowStr = iso8601Formatter.string(from: Date())
+        let nowStr = Date.now.formatted(.iso8601)
         let rows = try db.prepare(
             "SELECT COUNT(*) FROM encryption_keys WHERE reference = ? AND layer = ? AND (expires_at IS NULL OR expires_at > ?)",
             reference, layer.rawValue, nowStr

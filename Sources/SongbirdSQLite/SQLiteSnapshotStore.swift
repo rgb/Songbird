@@ -17,7 +17,7 @@ public actor SQLiteSnapshotStore: SnapshotStore {
     /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
     private let executor: DispatchSerialQueue
-    private let iso8601Formatter = ISO8601DateFormatter()
+
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
         executor.asUnownedSerialExecutor()
@@ -61,7 +61,7 @@ public actor SQLiteSnapshotStore: SnapshotStore {
         version: Int64,
         for stream: StreamName
     ) async throws {
-        let now = iso8601Formatter.string(from: Date())
+        let now = Date.now.formatted(.iso8601)
         try db.run(
             """
             INSERT INTO snapshots (stream_name, state, version, updated_at)

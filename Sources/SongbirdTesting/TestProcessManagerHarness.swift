@@ -30,7 +30,16 @@ public struct TestProcessManagerHarness<PM: ProcessManager> {
     /// then calls `handle` with the current per-entity state.
     public mutating func given(_ event: RecordedEvent) throws {
         for reaction in PM.reactions {
-            guard let route = (try? reaction.tryRoute(event)) ?? nil else { continue }
+            let route: String?
+            do {
+                route = try reaction.tryRoute(event)
+            } catch {
+                // tryRoute throws when decoding fails for a non-matching event type.
+                // Skip to next reaction (matches ProcessManagerRunner behavior).
+                continue
+            }
+
+            guard let route else { continue }
 
             let currentState = states[route] ?? PM.initialState
             let (newState, newOutput) = try reaction.handle(currentState, event)

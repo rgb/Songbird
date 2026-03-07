@@ -133,7 +133,11 @@ public actor TransportClient {
                 pendingCalls[requestId] = continuation
                 var buffer = channel.allocator.buffer(capacity: data.count)
                 buffer.writeBytes(data)
-                channel.writeAndFlush(buffer, promise: nil)
+                let promise = channel.eventLoop.makePromise(of: Void.self)
+                promise.futureResult.whenFailure { error in
+                    Task { await self.cancelPendingCall(requestId: requestId, error: SongbirdDistributedError.connectionFailed("Write failed: \(error)")) }
+                }
+                channel.writeAndFlush(buffer, promise: promise)
 
                 // Guard against cancellation racing with registration.
                 // If the task was cancelled before the continuation was registered,
@@ -228,7 +232,7 @@ final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
                 "size": "\(length)", "max": "\(maxWireMessageSize)",
             ])
             context.close(promise: nil)
-            return .needMoreData
+            throw SongbirdDistributedError.connectionFailed("Inbound message exceeds max size: \(length) > \(maxWireMessageSize)")
         }
 
         let totalLength = 4 + Int(length)

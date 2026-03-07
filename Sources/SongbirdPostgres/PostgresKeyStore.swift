@@ -59,7 +59,7 @@ public struct PostgresKeyStore: KeyStore, Sendable {
 
         // INSERT succeeded or was a no-op, but re-read found nothing.
         // This indicates a bug (e.g., concurrent DELETE between INSERT and SELECT).
-        preconditionFailure("Key not found after INSERT for reference '\(reference)', layer '\(layer.rawValue)'")
+        throw PostgresStoreError.keyNotFoundAfterInsert(reference: reference, layer: layer.rawValue)
     }
 
     public func existingKey(for reference: String, layer: KeyLayer) async throws -> SymmetricKey? {

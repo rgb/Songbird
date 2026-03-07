@@ -75,9 +75,9 @@ public final class EventTypeRegistry: Sendable {
             // Store the upcast transform keyed by the old event type string
             state.upcasts[oldEventType] = { @Sendable (event: any Event) -> any Event in
                 guard let oldEvent = event as? U.OldEvent else {
-                    // Registry misconfiguration: the decoder produced a type that doesn't match the upcast.
-                    // This is a programming error, but we return the event unchanged rather than crashing.
-                    return event
+                    preconditionFailure(
+                        "Registry misconfiguration: decoder for '\(oldEventType)' produced \(type(of: event)), expected \(U.OldEvent.self)"
+                    )
                 }
                 return upcast.upcast(oldEvent)
             }

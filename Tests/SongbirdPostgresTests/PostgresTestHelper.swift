@@ -13,44 +13,64 @@ private actor ContainerState {
     private var host: String?
     private var port: Int?
     private var started = false
+    private var starting = false
     private var migrated = false
 
     func ensureStarted() async throws {
         guard !started else { return }
-        started = true  // Set immediately to prevent re-entrant calls
+        guard !starting else {
+            // Another call is already starting the container — wait for it
+            while starting && !started {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+            if !started { throw PostgresTestHelperError.containerNotStarted }
+            return
+        }
+        starting = true
 
-        let (stream, continuation) = AsyncStream<(String, Int)>.makeStream()
+        let (stream, continuation) = AsyncStream<Result<(String, Int), any Error>>.makeStream()
 
         // Launch container in a detached task — lives for the process duration.
         // withPostgresContainer handles cleanup when the task is cancelled at process exit.
         Task.detached {
-            let postgres = PostgresContainer()
-                .withDatabase("songbird_test")
-                .withUsername("songbird")
-                .withPassword("songbird")
-            try await withPostgresContainer(postgres) { container in
-                let mappedPort = try await container.port()
-                let mappedHost = container.host()
-                continuation.yield((mappedHost, mappedPort))
-                continuation.finish()
-                // Keep the container alive until the process exits
-                while !Task.isCancelled {
-                    try await Task.sleep(for: .seconds(3600))
+            do {
+                let postgres = PostgresContainer()
+                    .withDatabase("songbird_test")
+                    .withUsername("songbird")
+                    .withPassword("songbird")
+                try await withPostgresContainer(postgres) { container in
+                    let mappedPort = try await container.port()
+                    let mappedHost = container.host()
+                    continuation.yield(.success((mappedHost, mappedPort)))
+                    continuation.finish()
+                    // Keep the container alive until the process exits
+                    while !Task.isCancelled {
+                        try await Task.sleep(for: .seconds(3600))
+                    }
                 }
+            } catch {
+                continuation.yield(.failure(error))
+                continuation.finish()
             }
         }
 
         // Wait for connection info from the container
-        for await (h, p) in stream {
-            self.host = h
-            self.port = p
+        for await result in stream {
+            switch result {
+            case .success(let (h, p)):
+                self.host = h
+                self.port = p
+                self.started = true
+            case .failure(let error):
+                self.starting = false
+                throw error
+            }
             break
         }
     }
 
     func ensureMigrated() async throws {
         guard !migrated else { return }
-        migrated = true  // Set immediately to prevent re-entrant calls
         let config = try makeConfiguration()
         let logger = Logger(label: "songbird.test.migrations")
         let client = PostgresClient(configuration: config)

@@ -174,6 +174,18 @@ public struct EventSubscription: AsyncSequence, Sendable {
                 try await Task.sleep(for: tickInterval)
             }
 
+            // Flush position on cancellation if we had events
+            if !currentBatch.isEmpty && batchIndex > 0 {
+                let lastDeliveredIndex = Swift.min(batchIndex, currentBatch.count) - 1
+                let lastDelivered = currentBatch[lastDeliveredIndex].globalPosition
+                if lastDelivered > globalPosition {
+                    try? await positionStore.save(
+                        subscriberId: subscriberId,
+                        globalPosition: lastDelivered
+                    )
+                }
+            }
+
             return nil  // cancelled
         }
     }

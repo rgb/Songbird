@@ -9,7 +9,7 @@ public actor SQLitePositionStore: PositionStore {
     /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
     private let executor: DispatchSerialQueue
-    private let iso8601Formatter = ISO8601DateFormatter()
+
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
         executor.asUnownedSerialExecutor()
@@ -57,7 +57,7 @@ public actor SQLitePositionStore: PositionStore {
     }
 
     public func save(subscriberId: String, globalPosition: Int64) async throws {
-        let now = iso8601Formatter.string(from: Date())
+        let now = Date.now.formatted(.iso8601)
         try db.run(
             """
             INSERT INTO positions (subscriber_id, global_position, updated_at) VALUES (?, ?, ?)

@@ -7,6 +7,8 @@ import Songbird
 public enum PostgresStoreError: Error {
     case encodingFailed
     case corruptedTimestamp(String)
+    case corruptedData(String)
+    case keyNotFoundAfterInsert(reference: String, layer: String)
 }
 
 public struct PostgresEventStore: EventStore, Sendable {
@@ -79,6 +81,12 @@ public struct PostgresEventStore: EventStore, Sendable {
                     globalPosition = gp - 1  // 0-based (BIGSERIAL starts at 1)
                     normalizedData = dataText
                     normalizedTimestamp = ts
+                }
+
+                guard !normalizedData.isEmpty else {
+                    throw PostgresStoreError.corruptedData(
+                        "INSERT RETURNING returned no rows for stream '\(streamStr)'"
+                    )
                 }
 
                 let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(normalizedData)\0\(normalizedTimestamp)"
