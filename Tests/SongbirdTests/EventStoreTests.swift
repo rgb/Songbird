@@ -1,6 +1,7 @@
 import Testing
 
 @testable import Songbird
+import SongbirdTesting
 
 @Suite("VersionConflictError")
 struct VersionConflictErrorTests {
@@ -31,6 +32,8 @@ struct VersionConflictErrorTests {
 @Suite("EventStore protocol")
 struct EventStoreProtocolTests {
     @Test func protocolIsUsableAsExistential() async throws {
-        let _: (any EventStore)? = nil
+        let store: any EventStore = InMemoryEventStore()
+        let version = try await store.streamVersion(StreamName(category: "test"))
+        #expect(version == -1)
     }
 }
