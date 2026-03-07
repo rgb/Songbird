@@ -111,6 +111,59 @@ enum RunnerFulfillmentPM: ProcessManager {
     ]
 }
 
+// MARK: - Failing Event Store
+
+/// An event store that fails on append for a configurable stream category.
+/// All other operations delegate to the inner `InMemoryEventStore`.
+private actor FailingEventStore: EventStore {
+    let inner = InMemoryEventStore()
+    let failCategory: String
+
+    init(failCategory: String) {
+        self.failCategory = failCategory
+    }
+
+    func append(
+        _ event: some Event,
+        to stream: StreamName,
+        metadata: EventMetadata,
+        expectedVersion: Int64?
+    ) async throws -> RecordedEvent {
+        if stream.category == failCategory {
+            throw FailingStoreError.simulatedFailure
+        }
+        return try await inner.append(event, to: stream, metadata: metadata, expectedVersion: expectedVersion)
+    }
+
+    func readStream(
+        _ stream: StreamName,
+        from position: Int64,
+        maxCount: Int
+    ) async throws -> [RecordedEvent] {
+        try await inner.readStream(stream, from: position, maxCount: maxCount)
+    }
+
+    func readCategories(
+        _ categories: [String],
+        from globalPosition: Int64,
+        maxCount: Int
+    ) async throws -> [RecordedEvent] {
+        try await inner.readCategories(categories, from: globalPosition, maxCount: maxCount)
+    }
+
+    func readLastEvent(in stream: StreamName) async throws -> RecordedEvent? {
+        try await inner.readLastEvent(in: stream)
+    }
+
+    func streamVersion(_ stream: StreamName) async throws -> Int64 {
+        try await inner.streamVersion(stream)
+    }
+
+    enum FailingStoreError: Error {
+        case simulatedFailure
+    }
+}
+
 // MARK: - Tests
 
 @Suite("ProcessManagerRunner")
@@ -368,6 +421,62 @@ struct ProcessManagerRunnerTests {
 
         // The most recently processed entity should still be cached
         #expect(state3 == RunnerFulfillmentPM.State(total: 300, paid: false))
+
+        task.cancel()
+        _ = await task.result
+    }
+
+    // MARK: - Error Recovery
+
+    @Test func continuesProcessingAfterAppendFailure() async throws {
+        // The PM outputs to "runnerFulfillment" category — make that fail
+        let store = FailingEventStore(failCategory: "runnerFulfillment")
+        let positionStore = InMemoryPositionStore()
+
+        let runner = ProcessManagerRunner<RunnerFulfillmentPM>(
+            store: store,
+            positionStore: positionStore,
+            tickInterval: .milliseconds(10)
+        )
+
+        let task = Task { try await runner.run() }
+
+        // Append two order events directly to the inner store so the subscription
+        // can read them. The PM will try to emit output for each, but the output
+        // append will fail (simulated). The runner should NOT crash.
+        _ = try await store.inner.append(
+            RunnerOrderEvent.placed(orderId: "order-1", total: 100),
+            to: StreamName(category: "runnerOrder", id: "order-1"),
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+        _ = try await store.inner.append(
+            RunnerOrderEvent.placed(orderId: "order-2", total: 200),
+            to: StreamName(category: "runnerOrder", id: "order-2"),
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        // Wait for runner to process both events
+        try await Task.sleep(for: .milliseconds(200))
+
+        // The runner should still be alive (not crashed).
+        // State is updated BEFORE the append call in processEvent, so even though
+        // the output append fails, the state cache reflects that events were handled.
+        let state1 = await runner.state(for: "order-1")
+        let state2 = await runner.state(for: "order-2")
+        #expect(state1 == RunnerFulfillmentPM.State(total: 100, paid: false))
+        #expect(state2 == RunnerFulfillmentPM.State(total: 200, paid: false))
+
+        // No output events should exist (appends failed)
+        let output1 = try await store.readStream(
+            StreamName(category: "runnerFulfillment", id: "order-1"), from: 0, maxCount: 100
+        )
+        let output2 = try await store.readStream(
+            StreamName(category: "runnerFulfillment", id: "order-2"), from: 0, maxCount: 100
+        )
+        #expect(output1.isEmpty)
+        #expect(output2.isEmpty)
 
         task.cancel()
         _ = await task.result
