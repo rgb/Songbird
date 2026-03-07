@@ -191,8 +191,7 @@ extension CryptoShreddingStore {
             return try JSONValue.fromJSONFragmentData(plaintext)
 
         } else {
-            // Not an encrypted value — shouldn't happen for protected fields
-            return .string(encryptedString)
+            throw CryptoShreddingError.unknownEncryptionScheme(encryptedString)
         }
     }
 
@@ -253,4 +252,5 @@ extension Array where Element: Sendable {
 public enum CryptoShreddingError: Error, Equatable {
     case invalidCiphertext
     case sealFailure
+    case unknownEncryptionScheme(String)
 }

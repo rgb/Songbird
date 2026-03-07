@@ -255,6 +255,33 @@ struct CryptoShreddingStoreTests {
         }
     }
 
+    // MARK: - Unknown Encryption Scheme
+
+    @Test func decryptThrowsOnUnknownEncPrefix() async throws {
+        let (store, inner, _) = makeStore()
+        let stream = StreamName(category: "account", id: "42")
+
+        // Manually craft JSON with an unknown enc: prefix for a protected field.
+        // Append directly to the inner store, bypassing CryptoShreddingStore's encryption.
+        let fields: [String: JSONValue] = [
+            "email": .string("enc:unknown:abcdef"),
+            "name": .string("enc:unknown:ghijkl"),
+            "amount": .double(500),
+        ]
+        let metadata = EventMetadata(piiReferenceKey: "42")
+        _ = try await inner.append(
+            EncryptedPayload(originalEventType: "SecureEvent", fields: fields),
+            to: stream,
+            metadata: metadata,
+            expectedVersion: nil
+        )
+
+        // Reading through the CryptoShreddingStore should throw unknownEncryptionScheme
+        await #expect(throws: CryptoShreddingError.self) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 10)
+        }
+    }
+
     // MARK: - Mixed Streams
 
     @Test func mixedEncryptedAndPlainEvents() async throws {
