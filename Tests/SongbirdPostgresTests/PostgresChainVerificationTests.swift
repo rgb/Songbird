@@ -39,6 +39,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") str
         }
     }
 
+    #if DEBUG
     @Test func tamperedEventBreaksChain() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
@@ -58,4 +59,5 @@ extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") str
             #expect(result.brokenAtSequence == 1)
         }
     }
+    #endif
 }}
