@@ -124,7 +124,7 @@ public actor SQLiteEventStore: EventStore {
             let eventType = event.eventType
 
             // Hash chain
-            let previousHash = try lastEventHash() ?? "genesis"
+            let previousHash = try lastEventHash() ?? HashChain.genesisSeed
             let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(eventDataString)\0\(iso8601)"
             let eventHash = SHA256.hash(data: Data(hashInput.utf8))
                 .map { String(format: "%02x", $0) }
@@ -243,7 +243,7 @@ public actor SQLiteEventStore: EventStore {
     // MARK: - Chain Verification
 
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
-        var previousHash = "genesis"
+        var previousHash = HashChain.genesisSeed
         var verified = 0
         var lastGlobalPosition: Int64 = 0  // AUTOINCREMENT starts at 1, so 0 means "before first"
 

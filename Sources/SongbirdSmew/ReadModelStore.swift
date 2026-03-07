@@ -55,7 +55,7 @@ public actor ReadModelStore {
         if case .tiered(let config) = storageMode {
             self.coldSchemaName = config.schemaName
         } else {
-            self.coldSchemaName = "lake"
+            self.coldSchemaName = DuckLakeDefaults.schemaName
         }
         if let path {
             self.database = try Database(store: .file(at: URL(fileURLWithPath: path)))

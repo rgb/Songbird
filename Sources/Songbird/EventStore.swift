@@ -1,3 +1,9 @@
+/// Constants for event hash chain computation.
+public enum HashChain {
+    /// The initial hash value used as the seed for the first event in a hash chain.
+    public static let genesisSeed = "genesis"
+}
+
 public protocol EventStore: Sendable {
     func append(
         _ event: some Event,

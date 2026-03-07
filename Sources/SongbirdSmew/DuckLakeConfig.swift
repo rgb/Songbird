@@ -1,3 +1,9 @@
+/// Default values for DuckLake configuration.
+public enum DuckLakeDefaults {
+    /// The default schema name for the cold tier.
+    public static let schemaName = "lake"
+}
+
 /// Configuration for DuckLake cold-tier storage.
 ///
 /// DuckLake stores data as Parquet files, with a metadata catalog tracking
@@ -42,7 +48,7 @@ public struct DuckLakeConfig: Sendable {
         catalogPath: String,
         dataPath: String,
         backend: Backend = .local,
-        schemaName: String = "lake"
+        schemaName: String = DuckLakeDefaults.schemaName
     ) {
         self.catalogPath = catalogPath
         self.dataPath = dataPath

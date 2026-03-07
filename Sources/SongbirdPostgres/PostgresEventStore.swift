@@ -11,6 +11,12 @@ public enum PostgresStoreError: Error {
     case keyNotFoundAfterInsert(reference: String, layer: String)
 }
 
+/// Default values for PostgreSQL event store configuration.
+public enum PostgresDefaults {
+    /// The default PostgreSQL NOTIFY channel used for event notifications.
+    public static let notifyChannel = "songbird_events"
+}
+
 public struct PostgresEventStore: EventStore, Sendable {
     private let client: PostgresClient
     private let logger = Logger(label: "songbird.postgres")
@@ -18,7 +24,7 @@ public struct PostgresEventStore: EventStore, Sendable {
     private let jsonDecoder = JSONDecoder()
     public let notifyChannel: String
 
-    public init(client: PostgresClient, notifyChannel: String = "songbird_events") {
+    public init(client: PostgresClient, notifyChannel: String = PostgresDefaults.notifyChannel) {
         self.client = client
         self.notifyChannel = notifyChannel
     }
@@ -65,7 +71,7 @@ public struct PostgresEventStore: EventStore, Sendable {
                 position = currentVersion + 1
 
                 // Hash chain: insert first, then compute hash from JSONB-normalized data
-                let previousHash = try await self.lastEventHash(connection: connection) ?? "genesis"
+                let previousHash = try await self.lastEventHash(connection: connection) ?? HashChain.genesisSeed
 
                 let insertRows = try await connection.query("""
                     INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp)
@@ -264,7 +270,7 @@ public struct PostgresEventStore: EventStore, Sendable {
     // MARK: - Chain Verification
 
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
-        var previousHash = "genesis"
+        var previousHash = HashChain.genesisSeed
         var verified = 0
         var lastGlobalPosition: Int64 = 0  // BIGSERIAL starts at 1, so 0 means "before first"
 

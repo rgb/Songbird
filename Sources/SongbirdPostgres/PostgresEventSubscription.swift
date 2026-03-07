@@ -18,7 +18,7 @@ private actor NotificationSignal {
     private var timeoutTasks: [UUID: Task<Void, Never>] = [:]
 
     /// Establishes the LISTEN connection and begins listening for notifications.
-    func start(config: PostgresConnection.Configuration, logger: Logger, channel: String = "songbird_events") async throws {
+    func start(config: PostgresConnection.Configuration, logger: Logger, channel: String = PostgresDefaults.notifyChannel) async throws {
         let conn = try await PostgresConnection.connect(
             configuration: config,
             id: 0,
@@ -90,7 +90,7 @@ private actor NotificationSignal {
     }
 
     /// Tears down and re-establishes the LISTEN connection.
-    func reconnect(config: PostgresConnection.Configuration, logger: Logger, channel: String = "songbird_events") async throws {
+    func reconnect(config: PostgresConnection.Configuration, logger: Logger, channel: String = PostgresDefaults.notifyChannel) async throws {
         await stop()
         try await start(config: config, logger: logger, channel: channel)
     }
@@ -145,7 +145,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         positionStore: any PositionStore,
         batchSize: Int = 100,
         fallbackPollInterval: Duration = .seconds(5),
-        notifyChannel: String = "songbird_events"
+        notifyChannel: String = PostgresDefaults.notifyChannel
     ) {
         self.store = store
         self.connectionConfig = connectionConfig
