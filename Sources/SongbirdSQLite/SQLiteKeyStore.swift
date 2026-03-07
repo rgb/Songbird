@@ -68,21 +68,32 @@ public actor SQLiteKeyStore: KeyStore {
             iso8601Formatter.string(from: now + TimeInterval(duration.components.seconds))
         }
 
+        // Use INSERT OR IGNORE to handle concurrent inserts safely.
+        // If another caller inserted between our SELECT and INSERT,
+        // this is a no-op and we fall through to re-read.
         try db.run(
             """
-            INSERT INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
+            INSERT OR IGNORE INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?)
             """,
             reference, layer.rawValue, Blob(bytes: [UInt8](keyData)), nowStr, expiresAtStr
         )
 
+        // Re-read to handle the race: if our INSERT was a no-op,
+        // this returns the key the other caller inserted.
+        if let existing = try await existingKey(for: reference, layer: layer) {
+            return existing
+        }
+
+        // Should never happen: we just inserted or another caller did
         return newKey
     }
 
     public func existingKey(for reference: String, layer: KeyLayer) async throws -> SymmetricKey? {
+        let nowStr = iso8601Formatter.string(from: Date())
         let rows = try db.prepare(
-            "SELECT key_data FROM encryption_keys WHERE reference = ? AND layer = ? LIMIT 1",
-            reference, layer.rawValue
+            "SELECT key_data FROM encryption_keys WHERE reference = ? AND layer = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1",
+            reference, layer.rawValue, nowStr
         )
 
         for row in rows {
@@ -100,9 +111,10 @@ public actor SQLiteKeyStore: KeyStore {
     }
 
     public func hasKey(for reference: String, layer: KeyLayer) async throws -> Bool {
+        let nowStr = iso8601Formatter.string(from: Date())
         let rows = try db.prepare(
-            "SELECT COUNT(*) FROM encryption_keys WHERE reference = ? AND layer = ?",
-            reference, layer.rawValue
+            "SELECT COUNT(*) FROM encryption_keys WHERE reference = ? AND layer = ? AND (expires_at IS NULL OR expires_at > ?)",
+            reference, layer.rawValue, nowStr
         )
 
         for row in rows {
