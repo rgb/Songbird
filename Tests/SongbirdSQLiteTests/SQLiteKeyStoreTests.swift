@@ -109,5 +109,29 @@ struct SQLiteKeyStoreTests {
         let newKey = try await store.key(for: "entity-1", layer: .pii, expiresAfter: .seconds(3600))
         #expect(newKey != originalKey)
     }
+
+    @Test func corruptedRowWithNullKeyData() async throws {
+        let store = try makeStore()
+
+        // Recreate the table without NOT NULL constraints so we can insert
+        // a row with a NULL key_data blob to exercise the corruptedRow path.
+        try await store.rawExecuteMulti("""
+            DROP TABLE encryption_keys;
+            CREATE TABLE encryption_keys (
+                reference   TEXT,
+                layer       TEXT,
+                key_data    BLOB,
+                created_at  TEXT,
+                expires_at  TEXT,
+                PRIMARY KEY (reference, layer)
+            );
+            INSERT INTO encryption_keys (reference, layer, key_data, created_at)
+            VALUES ('entity-corrupt', 'pii', NULL, '2026-01-01T00:00:00Z');
+        """)
+
+        await #expect(throws: SQLiteKeyStoreError.corruptedRow(column: "key_data", reference: "entity-corrupt")) {
+            _ = try await store.existingKey(for: "entity-corrupt", layer: .pii)
+        }
+    }
     #endif
 }

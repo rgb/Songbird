@@ -62,6 +62,54 @@ struct SQLiteSnapshotStoreTests {
         #expect(loaded?.version == 50)
     }
 
+    // MARK: - Corrupted Row Error Paths
+
+    #if DEBUG
+    @Test func corruptedRowWithNullState() async throws {
+        let store = try makeStore()
+        let stream = StreamName(category: "snap", id: "corrupt")
+
+        // Recreate the snapshots table without NOT NULL constraints so we
+        // can insert a row with a NULL state blob.
+        try await store.rawExecute("""
+            DROP TABLE snapshots;
+            CREATE TABLE snapshots (
+                stream_name TEXT PRIMARY KEY,
+                state       BLOB,
+                version     INTEGER,
+                updated_at  TEXT
+            );
+            INSERT INTO snapshots (stream_name, state, version, updated_at)
+            VALUES ('snap-corrupt', NULL, 5, '2026-01-01T00:00:00Z');
+        """)
+
+        await #expect(throws: SQLiteSnapshotStoreError.corruptedRow(column: "state", streamName: "snap-corrupt")) {
+            _ = try await store.loadData(for: stream)
+        }
+    }
+
+    @Test func corruptedRowWithNullVersion() async throws {
+        let store = try makeStore()
+        let stream = StreamName(category: "snap", id: "corrupt")
+
+        try await store.rawExecute("""
+            DROP TABLE snapshots;
+            CREATE TABLE snapshots (
+                stream_name TEXT PRIMARY KEY,
+                state       BLOB,
+                version     INTEGER,
+                updated_at  TEXT
+            );
+            INSERT INTO snapshots (stream_name, state, version, updated_at)
+            VALUES ('snap-corrupt', X'01020304', NULL, '2026-01-01T00:00:00Z');
+        """)
+
+        await #expect(throws: SQLiteSnapshotStoreError.corruptedRow(column: "version", streamName: "snap-corrupt")) {
+            _ = try await store.loadData(for: stream)
+        }
+    }
+    #endif
+
     @Test func differentStreamsAreIndependent() async throws {
         let store = try makeStore()
         let stream1 = StreamName(category: "snap", id: "1")

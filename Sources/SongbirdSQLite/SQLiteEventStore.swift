@@ -4,7 +4,7 @@ import Foundation
 import Songbird
 import SQLite
 
-public enum SQLiteEventStoreError: Error {
+public enum SQLiteEventStoreError: Error, Equatable {
     case corruptedRow(column: String, globalPosition: Int64?)
     case encodingFailed
 }

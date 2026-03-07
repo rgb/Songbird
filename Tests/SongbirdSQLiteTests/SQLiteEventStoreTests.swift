@@ -375,6 +375,154 @@ struct SQLiteEventStoreTests {
         #expect(events.count == 2)
     }
 
+    // MARK: - Corrupted Row Error Paths
+
+    #if DEBUG
+    @Test func corruptedRowWithNullEventType() async throws {
+        let store = try makeStore()
+        _ = try await store.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        // Recreate the events table without NOT NULL constraints so we can
+        // insert a row with a NULL event_type to exercise the corruptedRow path.
+        try await store.rawExecute("""
+            CREATE TABLE events_tmp AS SELECT * FROM events;
+            DROP TABLE events;
+            CREATE TABLE events (
+                global_position  INTEGER PRIMARY KEY AUTOINCREMENT,
+                stream_name      TEXT,
+                stream_category  TEXT,
+                position         INTEGER,
+                event_type       TEXT,
+                data             TEXT,
+                metadata         TEXT,
+                event_id         TEXT,
+                timestamp        TEXT,
+                event_hash       TEXT
+            );
+            INSERT INTO events SELECT * FROM events_tmp;
+            DROP TABLE events_tmp;
+            UPDATE events SET event_type = NULL WHERE global_position = 1;
+        """)
+
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: 1)) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 100)
+        }
+    }
+
+    @Test func corruptedRowWithNullData() async throws {
+        let store = try makeStore()
+        _ = try await store.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        try await store.rawExecute("""
+            CREATE TABLE events_tmp AS SELECT * FROM events;
+            DROP TABLE events;
+            CREATE TABLE events (
+                global_position  INTEGER PRIMARY KEY AUTOINCREMENT,
+                stream_name      TEXT,
+                stream_category  TEXT,
+                position         INTEGER,
+                event_type       TEXT,
+                data             TEXT,
+                metadata         TEXT,
+                event_id         TEXT,
+                timestamp        TEXT,
+                event_hash       TEXT
+            );
+            INSERT INTO events SELECT * FROM events_tmp;
+            DROP TABLE events_tmp;
+            UPDATE events SET data = NULL WHERE global_position = 1;
+        """)
+
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: 1)) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 100)
+        }
+    }
+
+    @Test func corruptedRowWithNullTimestamp() async throws {
+        let store = try makeStore()
+        _ = try await store.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        try await store.rawExecute("""
+            CREATE TABLE events_tmp AS SELECT * FROM events;
+            DROP TABLE events;
+            CREATE TABLE events (
+                global_position  INTEGER PRIMARY KEY AUTOINCREMENT,
+                stream_name      TEXT,
+                stream_category  TEXT,
+                position         INTEGER,
+                event_type       TEXT,
+                data             TEXT,
+                metadata         TEXT,
+                event_id         TEXT,
+                timestamp        TEXT,
+                event_hash       TEXT
+            );
+            INSERT INTO events SELECT * FROM events_tmp;
+            DROP TABLE events_tmp;
+            UPDATE events SET timestamp = NULL WHERE global_position = 1;
+        """)
+
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 1)) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 100)
+        }
+    }
+
+    @Test func corruptedRowWithInvalidTimestamp() async throws {
+        let store = try makeStore()
+        _ = try await store.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        // Set an invalid ISO 8601 string — the cast to String succeeds but
+        // Date parsing fails, triggering the second timestamp corruptedRow path.
+        try await store.rawExecute(
+            "UPDATE events SET timestamp = 'not-a-date' WHERE global_position = 1"
+        )
+
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 1)) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 100)
+        }
+    }
+
+    @Test func corruptedRowWithInvalidEventId() async throws {
+        let store = try makeStore()
+        _ = try await store.append(
+            AccountEvent.credited(amount: 100),
+            to: stream,
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        // Set an invalid UUID string — the cast to String succeeds but
+        // UUID parsing fails, triggering the second event_id corruptedRow path.
+        try await store.rawExecute(
+            "UPDATE events SET event_id = 'not-a-uuid' WHERE global_position = 1"
+        )
+
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: 1)) {
+            _ = try await store.readStream(stream, from: 0, maxCount: 100)
+        }
+    }
+    #endif
+
     // MARK: - Verify Chain with NULL Hashes
 
     #if DEBUG

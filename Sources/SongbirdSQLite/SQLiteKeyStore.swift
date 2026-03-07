@@ -4,7 +4,7 @@ import Foundation
 import Songbird
 import SQLite
 
-public enum SQLiteKeyStoreError: Error {
+public enum SQLiteKeyStoreError: Error, Equatable {
     case corruptedRow(column: String, reference: String)
 }
 
@@ -142,10 +142,16 @@ public actor SQLiteKeyStore: KeyStore {
     // MARK: - Test Support
 
     #if DEBUG
-    /// Execute raw SQL. **Test-only** — used for scenarios like backdating
-    /// expiry timestamps. Not available in release builds.
+    /// Execute raw SQL with bindings. **Test-only** — used for scenarios like
+    /// backdating expiry timestamps. Not available in release builds.
     public func rawExecute(_ sql: String, _ bindings: Binding?...) throws {
         try db.run(sql, bindings)
+    }
+
+    /// Execute raw multi-statement SQL. **Test-only** — used for scenarios like
+    /// recreating tables without NOT NULL constraints. Not available in release builds.
+    public func rawExecuteMulti(_ sql: String) throws {
+        try db.execute(sql)
     }
     #endif
 }

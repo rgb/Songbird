@@ -3,7 +3,7 @@ import Foundation
 import Songbird
 import SQLite
 
-public enum SQLiteSnapshotStoreError: Error {
+public enum SQLiteSnapshotStoreError: Error, Equatable {
     case corruptedRow(column: String, streamName: String)
 }
 
@@ -74,6 +74,16 @@ public actor SQLiteSnapshotStore: SnapshotStore {
             stream.description, Blob(bytes: [UInt8](data)), version, now
         )
     }
+
+    // MARK: - Test Support
+
+    #if DEBUG
+    /// Execute raw SQL. **Test-only** — used for scenarios like inserting
+    /// corrupted data to test error paths. Not available in release builds.
+    public func rawExecute(_ sql: String) throws {
+        try db.execute(sql)
+    }
+    #endif
 
     public func loadData(
         for stream: StreamName
