@@ -16,6 +16,8 @@ public actor SQLiteEventStore: EventStore {
     nonisolated(unsafe) let db: Connection
     private let registry: EventTypeRegistry
     private let iso8601Formatter = ISO8601DateFormatter()
+    private let jsonEncoder = JSONEncoder()
+    private let jsonDecoder = JSONDecoder()
     private let executor: DispatchSerialQueue
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor {
@@ -114,11 +116,11 @@ public actor SQLiteEventStore: EventStore {
             let eventId = UUID()
             let now = Date()
             let iso8601 = iso8601Formatter.string(from: now)
-            let eventData = try JSONEncoder().encode(event)
+            let eventData = try jsonEncoder.encode(event)
             guard let eventDataString = String(data: eventData, encoding: .utf8) else {
                 throw SQLiteEventStoreError.encodingFailed
             }
-            let metadataData = try JSONEncoder().encode(metadata)
+            let metadataData = try jsonEncoder.encode(metadata)
             guard let metadataString = String(data: metadataData, encoding: .utf8) else {
                 throw SQLiteEventStoreError.encodingFailed
             }
@@ -359,7 +361,7 @@ public actor SQLiteEventStore: EventStore {
 
         let stream = StreamName(category: category, id: extractId(from: streamStr, category: category))
         let eventData = Data(dataStr.utf8)
-        let metadata = try JSONDecoder().decode(EventMetadata.self, from: Data(metadataStr.utf8))
+        let metadata = try jsonDecoder.decode(EventMetadata.self, from: Data(metadataStr.utf8))
 
         guard let eventId = UUID(uuidString: eventIdStr) else {
             throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
