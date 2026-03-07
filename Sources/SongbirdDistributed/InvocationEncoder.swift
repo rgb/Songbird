@@ -9,7 +9,7 @@ public struct SongbirdInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = Codable
 
     private let encoder = JSONEncoder()
-    var arguments: [Data] = []
+    private var arguments: [Data] = []
 
     public mutating func recordGenericSubstitution<T>(_ type: T.Type) throws {
         // We don't support generic distributed functions in Songbird.

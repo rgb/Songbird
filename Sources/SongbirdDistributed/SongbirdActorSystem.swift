@@ -68,10 +68,20 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
     }
 
     /// Connects to a remote worker process.
+    ///
+    /// If a client for the given `processName` already exists, it is disconnected
+    /// before being replaced, preventing event-loop thread leaks.
     public func connect(processName: String, socketPath: String) async throws {
         let client = TransportClient()
         try await client.connect(socketPath: socketPath)
-        clients.withLock { $0[processName] = client }
+        let oldClient = clients.withLock { state -> TransportClient? in
+            let old = state[processName]
+            state[processName] = client
+            return old
+        }
+        if let oldClient {
+            try await oldClient.disconnect()
+        }
     }
 
     /// Stops the server and disconnects all clients.
@@ -222,7 +232,7 @@ final class LockedBox<T: Sendable>: Sendable {
         self.mutex = Mutex(value)
     }
 
-    func withLock<R>(_ body: (inout T) -> R) -> R {
+    func withLock<R: Sendable>(_ body: @Sendable (inout T) -> R) -> R {
         mutex.withLock { body(&$0) }
     }
 }
