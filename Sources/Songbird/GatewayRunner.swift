@@ -73,6 +73,8 @@ public actor GatewayRunner<G: Gateway> {
                     label: "songbird_gateway_delivery_total",
                     dimensions: [("gateway_id", gateway.gatewayId), ("status", "success")]
                 ).increment()
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 let elapsed = ContinuousClock.now - start
                 Metrics.Timer(
