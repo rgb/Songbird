@@ -8,6 +8,7 @@ import Foundation
 public struct SongbirdInvocationEncoder: DistributedTargetInvocationEncoder {
     public typealias SerializationRequirement = Codable
 
+    private let encoder = JSONEncoder()
     var targetName: String = ""
     var arguments: [Data] = []
 
@@ -19,7 +20,7 @@ public struct SongbirdInvocationEncoder: DistributedTargetInvocationEncoder {
     public mutating func recordArgument<Value: Codable>(
         _ argument: RemoteCallArgument<Value>
     ) throws {
-        let data = try JSONEncoder().encode(argument.value)
+        let data = try encoder.encode(argument.value)
         arguments.append(data)
     }
 
@@ -38,6 +39,6 @@ public struct SongbirdInvocationEncoder: DistributedTargetInvocationEncoder {
     /// Serializes all recorded arguments into a single Data blob (JSON array of base64 chunks).
     func encodeArguments() throws -> Data {
         let base64Args = arguments.map { $0.base64EncodedString() }
-        return try JSONEncoder().encode(base64Args)
+        return try encoder.encode(base64Args)
     }
 }

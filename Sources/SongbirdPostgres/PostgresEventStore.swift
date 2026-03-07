@@ -12,10 +12,15 @@ public struct PostgresEventStore: EventStore, Sendable {
     private let client: PostgresClient
     private let registry: EventTypeRegistry
     private let logger = Logger(label: "songbird.postgres")
+    private let jsonEncoder = JSONEncoder()
+    private let jsonDecoder = JSONDecoder()
+    nonisolated(unsafe) private let iso8601Formatter = ISO8601DateFormatter()
+    public let notifyChannel: String
 
-    public init(client: PostgresClient, registry: EventTypeRegistry) {
+    public init(client: PostgresClient, registry: EventTypeRegistry, notifyChannel: String = "songbird_events") {
         self.client = client
         self.registry = registry
+        self.notifyChannel = notifyChannel
     }
 
     // MARK: - Append
@@ -32,11 +37,11 @@ public struct PostgresEventStore: EventStore, Sendable {
         let eventId = UUID()
         let now = Date()
 
-        let eventData = try JSONEncoder().encode(event)
+        let eventData = try jsonEncoder.encode(event)
         guard let eventDataString = String(data: eventData, encoding: .utf8) else {
             throw PostgresEventStoreError.encodingFailed
         }
-        let metadataData = try JSONEncoder().encode(metadata)
+        let metadataData = try jsonEncoder.encode(metadata)
         guard let metadataString = String(data: metadataData, encoding: .utf8) else {
             throw PostgresEventStoreError.encodingFailed
         }
@@ -87,8 +92,9 @@ public struct PostgresEventStore: EventStore, Sendable {
                 )
 
                 // Notify listeners
+                let channel = self.notifyChannel
                 try await connection.query(
-                    "SELECT pg_notify('songbird_events', \(String(globalPosition)))",
+                    "SELECT pg_notify(\(channel), \(String(globalPosition)))",
                     logger: logger
                 )
             }
@@ -121,7 +127,6 @@ public struct PostgresEventStore: EventStore, Sendable {
             throw error
         }
 
-        let iso8601Formatter = ISO8601DateFormatter()
         let returnedTimestamp = iso8601Formatter.date(from: normalizedTimestamp) ?? now
 
         return RecordedEvent(
@@ -352,7 +357,7 @@ public struct PostgresEventStore: EventStore, Sendable {
     ) throws -> RecordedEvent {
         let stream = StreamName(category: sc, id: extractId(from: sn, category: sc))
         let eventData = Data(dataStr.utf8)
-        let metadata = try JSONDecoder().decode(EventMetadata.self, from: Data(metadataStr.utf8))
+        let metadata = try jsonDecoder.decode(EventMetadata.self, from: Data(metadataStr.utf8))
 
         return RecordedEvent(
             id: eventId,

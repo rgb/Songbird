@@ -328,6 +328,29 @@ struct SQLiteEventStoreTests {
         }
     }
 
+    @Test func verifyChainWithBatchSizeOne() async throws {
+        let store = try makeStore()
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        let result = try await store.verifyChain(batchSize: 1)
+        #expect(result.intact == true)
+        #expect(result.eventsVerified == 3)
+    }
+
+    @Test func verifyChainWithBatchSizeTwo() async throws {
+        let store = try makeStore()
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        // batchSize=2 means first batch has 2 events, second batch has 1
+        let result = try await store.verifyChain(batchSize: 2)
+        #expect(result.intact == true)
+        #expect(result.eventsVerified == 3)
+    }
+
     @Test func readCategoryConvenienceStillWorks() async throws {
         let store = try makeStore()
         let s1 = StreamName(category: "account", id: "a")

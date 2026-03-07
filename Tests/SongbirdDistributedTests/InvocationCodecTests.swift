@@ -43,6 +43,14 @@ struct InvocationCodecTests {
         }
     }
 
+    @Test func invalidBase64ThrowsError() throws {
+        // Manually construct a JSON array with invalid base64
+        let invalidPayload = try JSONEncoder().encode(["not-valid-base64!!!"])
+        #expect(throws: SongbirdDistributedError.self) {
+            _ = try SongbirdInvocationDecoder(data: invalidPayload)
+        }
+    }
+
     @Test func resultHandlerCapturesReturnValue() async throws {
         let handler = SongbirdResultHandler()
         try await handler.onReturn(value: "hello")

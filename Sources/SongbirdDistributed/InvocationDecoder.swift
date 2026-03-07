@@ -9,11 +9,12 @@ import Foundation
 public final class SongbirdInvocationDecoder: DistributedTargetInvocationDecoder {
     public typealias SerializationRequirement = Codable
 
+    private let decoder = JSONDecoder()
     private let argumentChunks: [Data]
     private var index: Int = 0
 
     public init(data: Data) throws {
-        let base64Args = try JSONDecoder().decode([String].self, from: data)
+        let base64Args = try decoder.decode([String].self, from: data)
         self.argumentChunks = try base64Args.map { base64 in
             guard let data = Data(base64Encoded: base64) else {
                 throw SongbirdDistributedError.invalidArgumentEncoding
@@ -32,7 +33,7 @@ public final class SongbirdInvocationDecoder: DistributedTargetInvocationDecoder
         }
         let data = argumentChunks[index]
         index += 1
-        return try JSONDecoder().decode(Argument.self, from: data)
+        return try decoder.decode(Argument.self, from: data)
     }
 
     public func decodeErrorType() throws -> Any.Type? {

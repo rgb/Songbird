@@ -2,6 +2,7 @@ import Distributed
 import Foundation
 import Logging
 import NIOCore
+import Synchronization
 
 /// A custom `DistributedActorSystem` for same-machine IPC over Unix domain sockets.
 ///
@@ -208,19 +209,16 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
 
 // MARK: - LockedBox
 
-/// A simple thread-safe wrapper for mutable state.
-final class LockedBox<T: Sendable>: @unchecked Sendable {
-    private var value: T
-    private let lock = NSLock()
+/// A simple thread-safe wrapper for mutable state using Swift 6.2 Mutex.
+final class LockedBox<T: Sendable>: Sendable {
+    private let mutex: Mutex<T>
 
     init(_ value: T) {
-        self.value = value
+        self.mutex = Mutex(value)
     }
 
     func withLock<R>(_ body: (inout T) -> R) -> R {
-        lock.lock()
-        defer { lock.unlock() }
-        return body(&value)
+        mutex.withLock { body(&$0) }
     }
 }
 

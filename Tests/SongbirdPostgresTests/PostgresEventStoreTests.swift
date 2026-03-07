@@ -118,6 +118,30 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
         }
     }
 
+    @Test func concurrentAppendsProduceVersionConflict() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let registry = EventTypeRegistry()
+            registry.register(PGAccountEvent.self, eventTypes: ["Credited", "Debited"])
+            let store = PostgresEventStore(client: client, registry: registry)
+            let stream = StreamName(category: "account", id: "conflict-test")
+
+            // Seed with one event
+            _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+            // Append with a wrong expected version — must throw VersionConflictError
+            do {
+                _ = try await store.append(
+                    PGAccountEvent.credited(amount: 200),
+                    to: stream, metadata: EventMetadata(), expectedVersion: 99
+                )
+                Issue.record("Expected VersionConflictError")
+            } catch is VersionConflictError {
+                // Expected
+            }
+        }
+    }
+
     // MARK: - Read Stream
 
     @Test func readStreamReturnsEventsInOrder() async throws {

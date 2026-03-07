@@ -5,10 +5,8 @@ public actor InMemoryEventStore: EventStore {
     private var events: [RecordedEvent] = []
     private var streamPositions: [StreamName: Int64] = [:]
     private var nextGlobalPosition: Int64 = 0
-    private let registry: EventTypeRegistry
 
     public init(registry: EventTypeRegistry = EventTypeRegistry()) {
-        self.registry = registry
     }
 
     public func append(

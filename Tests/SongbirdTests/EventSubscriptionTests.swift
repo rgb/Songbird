@@ -263,6 +263,68 @@ struct EventSubscriptionTests {
         #expect(count == 2)
     }
 
+    @Test func cancelsCleanlyDuringActivePolling() async throws {
+        let (eventStore, positionStore) = makeStores()
+
+        let subscription = EventSubscription(
+            subscriberId: "test-sub",
+            categories: [category],
+            store: eventStore,
+            positionStore: positionStore,
+            batchSize: 100,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = EventCollector()
+        let task = Task {
+            for try await event in subscription {
+                await collector.append(event)
+                // Don't break -- let it poll forever
+            }
+        }
+
+        // Let the subscription start polling on an empty store
+        try await Task.sleep(for: .milliseconds(30))
+
+        // Append an event while the subscription is actively polling
+        try await appendEvents(to: eventStore, category: category, count: 1)
+
+        // Wait for the subscription to pick up the new event
+        try await Task.sleep(for: .milliseconds(50))
+        let count = await collector.count
+        #expect(count == 1)
+
+        // Cancel the task while the subscription is polling for more events
+        task.cancel()
+
+        // The task should finish promptly. Race against a generous timeout
+        // to detect if cancellation hangs.
+        let completed = await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                _ = await task.result
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(2))
+                return false
+            }
+            let first = await group.next()!
+            group.cancelAll()
+            return first
+        }
+
+        #expect(completed, "EventSubscription did not terminate promptly after cancellation")
+
+        // Verify the task result is either success or CancellationError
+        let result = await task.result
+        switch result {
+        case .success:
+            break  // clean exit via nil return
+        case .failure(let error):
+            #expect(error is CancellationError)
+        }
+    }
+
     // MARK: - Polling
 
     @Test func pollsForNewEvents() async throws {

@@ -17,7 +17,7 @@ private actor NotificationSignal {
     private var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
 
     /// Establishes the LISTEN connection and begins listening for notifications.
-    func start(config: PostgresConnection.Configuration, logger: Logger) async throws {
+    func start(config: PostgresConnection.Configuration, logger: Logger, channel: String = "songbird_events") async throws {
         let conn = try await PostgresConnection.connect(
             configuration: config,
             id: 0,
@@ -28,7 +28,7 @@ private actor NotificationSignal {
         // Background task that listens for notifications.
         // Uses the closure-based `listen(on:)` API so UNLISTEN is handled automatically.
         self.listenTask = Task {
-            try await conn.listen(on: "songbird_events") { notifications in
+            try await conn.listen(on: channel) { notifications in
                 for try await _ in notifications {
                     self.notifyWaiters()
                 }
@@ -85,9 +85,9 @@ private actor NotificationSignal {
     }
 
     /// Tears down and re-establishes the LISTEN connection.
-    func reconnect(config: PostgresConnection.Configuration, logger: Logger) async throws {
+    func reconnect(config: PostgresConnection.Configuration, logger: Logger, channel: String = "songbird_events") async throws {
         await stop()
-        try await start(config: config, logger: logger)
+        try await start(config: config, logger: logger, channel: channel)
     }
 }
 
@@ -130,6 +130,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
     public let positionStore: any PositionStore
     public let batchSize: Int
     public let fallbackPollInterval: Duration
+    public let notifyChannel: String
 
     public init(
         store: PostgresEventStore,
@@ -138,7 +139,8 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         categories: [String],
         positionStore: any PositionStore,
         batchSize: Int = 100,
-        fallbackPollInterval: Duration = .seconds(5)
+        fallbackPollInterval: Duration = .seconds(5),
+        notifyChannel: String = "songbird_events"
     ) {
         self.store = store
         self.connectionConfig = connectionConfig
@@ -147,6 +149,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         self.positionStore = positionStore
         self.batchSize = batchSize
         self.fallbackPollInterval = fallbackPollInterval
+        self.notifyChannel = notifyChannel
     }
 
     public func makeAsyncIterator() -> Iterator {
@@ -157,7 +160,8 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
             categories: categories,
             positionStore: positionStore,
             batchSize: batchSize,
-            fallbackPollInterval: fallbackPollInterval
+            fallbackPollInterval: fallbackPollInterval,
+            notifyChannel: notifyChannel
         )
     }
 
@@ -169,6 +173,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         let positionStore: any PositionStore
         let batchSize: Int
         let fallbackPollInterval: Duration
+        let notifyChannel: String
         let logger = Logger(label: "songbird.postgres.subscription")
 
         private let notificationSignal = NotificationSignal()
@@ -185,7 +190,8 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
             categories: [String],
             positionStore: any PositionStore,
             batchSize: Int,
-            fallbackPollInterval: Duration
+            fallbackPollInterval: Duration,
+            notifyChannel: String
         ) {
             self.store = store
             self.connectionConfig = connectionConfig
@@ -194,6 +200,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
             self.positionStore = positionStore
             self.batchSize = batchSize
             self.fallbackPollInterval = fallbackPollInterval
+            self.notifyChannel = notifyChannel
         }
 
         public mutating func next() async throws -> RecordedEvent? {
@@ -222,7 +229,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
 
             // Ensure LISTEN connection is started
             if !listenStarted {
-                try await notificationSignal.start(config: connectionConfig, logger: logger)
+                try await notificationSignal.start(config: connectionConfig, logger: logger, channel: notifyChannel)
                 listenStarted = true
             }
 
@@ -263,7 +270,8 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
                             )
                             try await notificationSignal.reconnect(
                                 config: connectionConfig,
-                                logger: logger
+                                logger: logger,
+                                channel: notifyChannel
                             )
                             currentBatch = fallbackBatch
                             batchIndex = 1

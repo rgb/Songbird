@@ -1,5 +1,5 @@
-import Foundation
 import Metrics
+import Synchronization
 
 /// A swift-metrics backend that captures all emitted metrics in memory for test assertions.
 ///
@@ -15,7 +15,7 @@ import Metrics
 /// let counter = TestMetricsFactory.shared.counter("my_counter")
 /// #expect(counter?.totalValue == 1)
 /// ```
-public final class TestMetricsFactory: MetricsFactory, @unchecked Sendable {
+public final class TestMetricsFactory: MetricsFactory, Sendable {
     public static let shared = TestMetricsFactory()
 
     private static let _doBootstrap: Bool = {
@@ -28,50 +28,53 @@ public final class TestMetricsFactory: MetricsFactory, @unchecked Sendable {
         _ = _doBootstrap
     }
 
-    private let lock = NSLock()
-    private var _counters: [String: TestCounter] = [:]
-    private var _timers: [String: TestTimer] = [:]
-    private var _recorders: [String: TestRecorder] = [:]
+    private struct State: Sendable {
+        var counters: [String: TestCounter] = [:]
+        var timers: [String: TestTimer] = [:]
+        var recorders: [String: TestRecorder] = [:]
+    }
+
+    private let state = Mutex(State())
 
     init() {}
 
     /// Reset all metric values. Call before each test to start fresh.
     public func reset() {
-        lock.withLock {
-            for counter in _counters.values { counter.reset() }
-            for timer in _timers.values { timer.reset() }
-            for recorder in _recorders.values { recorder.reset() }
+        state.withLock { state in
+            for counter in state.counters.values { counter.reset() }
+            for timer in state.timers.values { timer.reset() }
+            for recorder in state.recorders.values { recorder.reset() }
         }
     }
 
     // MARK: - MetricsFactory
 
     public func makeCounter(label: String, dimensions: [(String, String)]) -> CounterHandler {
-        lock.withLock {
+        state.withLock { state in
             let key = Self.makeKey(label, dimensions)
-            if let existing = _counters[key] { return existing }
+            if let existing = state.counters[key] { return existing }
             let handler = TestCounter()
-            _counters[key] = handler
+            state.counters[key] = handler
             return handler
         }
     }
 
     public func makeRecorder(label: String, dimensions: [(String, String)], aggregate: Bool) -> RecorderHandler {
-        lock.withLock {
+        state.withLock { state in
             let key = Self.makeKey(label, dimensions)
-            if let existing = _recorders[key] { return existing }
+            if let existing = state.recorders[key] { return existing }
             let handler = TestRecorder()
-            _recorders[key] = handler
+            state.recorders[key] = handler
             return handler
         }
     }
 
     public func makeTimer(label: String, dimensions: [(String, String)]) -> TimerHandler {
-        lock.withLock {
+        state.withLock { state in
             let key = Self.makeKey(label, dimensions)
-            if let existing = _timers[key] { return existing }
+            if let existing = state.timers[key] { return existing }
             let handler = TestTimer()
-            _timers[key] = handler
+            state.timers[key] = handler
             return handler
         }
     }
@@ -83,15 +86,15 @@ public final class TestMetricsFactory: MetricsFactory, @unchecked Sendable {
     // MARK: - Query API
 
     public func counter(_ label: String, dimensions: [(String, String)] = []) -> TestCounter? {
-        lock.withLock { _counters[Self.makeKey(label, dimensions)] }
+        state.withLock { $0.counters[Self.makeKey(label, dimensions)] }
     }
 
     public func timer(_ label: String, dimensions: [(String, String)] = []) -> TestTimer? {
-        lock.withLock { _timers[Self.makeKey(label, dimensions)] }
+        state.withLock { $0.timers[Self.makeKey(label, dimensions)] }
     }
 
     public func gauge(_ label: String, dimensions: [(String, String)] = []) -> TestRecorder? {
-        lock.withLock { _recorders[Self.makeKey(label, dimensions)] }
+        state.withLock { $0.recorders[Self.makeKey(label, dimensions)] }
     }
 
     // MARK: - Key Construction
@@ -105,58 +108,65 @@ public final class TestMetricsFactory: MetricsFactory, @unchecked Sendable {
 
 // MARK: - Test Metric Handlers
 
-public final class TestCounter: CounterHandler, @unchecked Sendable {
-    private let lock = NSLock()
-    public private(set) var totalValue: Int64 = 0
+public final class TestCounter: CounterHandler, Sendable {
+    private let _value = Mutex<Int64>(0)
+
+    public var totalValue: Int64 { _value.withLock { $0 } }
 
     public func increment(by amount: Int64) {
-        lock.withLock { totalValue += amount }
+        _value.withLock { $0 += amount }
     }
 
     public func reset() {
-        lock.withLock { totalValue = 0 }
+        _value.withLock { $0 = 0 }
     }
 }
 
-public final class TestTimer: TimerHandler, @unchecked Sendable {
-    private let lock = NSLock()
-    public private(set) var values: [Int64] = []
+public final class TestTimer: TimerHandler, Sendable {
+    private let _values = Mutex<[Int64]>([])
 
-    public var lastValue: Int64? { lock.withLock { values.last } }
+    public var values: [Int64] { _values.withLock { $0 } }
+    public var lastValue: Int64? { _values.withLock { $0.last } }
 
     public func recordNanoseconds(_ duration: Int64) {
-        lock.withLock { values.append(duration) }
+        _values.withLock { $0.append(duration) }
     }
 
     public func reset() {
-        lock.withLock { values.removeAll() }
+        _values.withLock { $0.removeAll() }
     }
 }
 
-public final class TestRecorder: RecorderHandler, @unchecked Sendable {
-    private let lock = NSLock()
-    public private(set) var lastValue: Double?
-    public private(set) var values: [Double] = []
+public final class TestRecorder: RecorderHandler, Sendable {
+    private struct RecorderState: Sendable {
+        var lastValue: Double?
+        var values: [Double] = []
+    }
+
+    private let _state = Mutex(RecorderState())
+
+    public var lastValue: Double? { _state.withLock { $0.lastValue } }
+    public var values: [Double] { _state.withLock { $0.values } }
 
     public func record(_ value: Int64) {
-        lock.withLock {
+        _state.withLock { state in
             let d = Double(value)
-            lastValue = d
-            values.append(d)
+            state.lastValue = d
+            state.values.append(d)
         }
     }
 
     public func record(_ value: Double) {
-        lock.withLock {
-            lastValue = value
-            values.append(value)
+        _state.withLock { state in
+            state.lastValue = value
+            state.values.append(value)
         }
     }
 
     public func reset() {
-        lock.withLock {
-            lastValue = nil
-            values.removeAll()
+        _state.withLock { state in
+            state.lastValue = nil
+            state.values.removeAll()
         }
     }
 }

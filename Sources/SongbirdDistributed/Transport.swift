@@ -247,6 +247,13 @@ final class MessageFrameEncoder: ChannelOutboundHandler, @unchecked Sendable {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let payload = unwrapOutboundIn(data)
+        guard payload.readableBytes <= maxWireMessageSize else {
+            let error = SongbirdDistributedError.remoteCallFailed(
+                "Outbound message exceeds max size (\(payload.readableBytes) > \(maxWireMessageSize))"
+            )
+            promise?.fail(error)
+            return
+        }
         var frame = context.channel.allocator.buffer(capacity: 4 + payload.readableBytes)
         frame.writeInteger(UInt32(payload.readableBytes))
         frame.writeImmutableBuffer(payload)

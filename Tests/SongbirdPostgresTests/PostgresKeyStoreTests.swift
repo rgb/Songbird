@@ -1,4 +1,5 @@
 import CryptoKit
+import Foundation
 import Testing
 
 @testable import Songbird
@@ -66,6 +67,31 @@ extension AllPostgresTests { @Suite("PostgresKeyStore") struct KeyStoreTests {
             _ = try await store.key(for: "entity-1", layer: .pii)
             try await store.deleteKey(for: "entity-1", layer: .pii)
             #expect(try await store.hasKey(for: "entity-1", layer: .pii) == false)
+        }
+    }
+
+    @Test func expiresAfterStoresExpiryAndKeyIsRetrievable() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+
+            // Create a key with a 1-hour expiry
+            let created = try await store.key(for: "entity-1", layer: .pii, expiresAfter: .seconds(3600))
+
+            // Verify the key is retrievable before expiry
+            let found = try await store.existingKey(for: "entity-1", layer: .pii)
+            #expect(found == created)
+
+            // Verify expires_at was actually stored in the database (not NULL)
+            let rows = try await client.query(
+                "SELECT expires_at FROM encryption_keys WHERE reference = \("entity-1") AND layer = \("pii")"
+            )
+            var expiresAtFound = false
+            for try await (expiresAt,) in rows.decode((Date?,).self) {
+                #expect(expiresAt != nil, "expires_at should be stored when expiresAfter is provided")
+                expiresAtFound = true
+            }
+            #expect(expiresAtFound, "Expected a row in encryption_keys")
         }
     }
 }}

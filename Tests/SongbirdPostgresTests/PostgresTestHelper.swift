@@ -17,6 +17,7 @@ private actor ContainerState {
 
     func ensureStarted() async throws {
         guard !started else { return }
+        started = true  // Set immediately to prevent re-entrant calls
 
         let (stream, continuation) = AsyncStream<(String, Int)>.makeStream()
 
@@ -45,11 +46,11 @@ private actor ContainerState {
             self.port = p
             break
         }
-        started = true
     }
 
     func ensureMigrated() async throws {
         guard !migrated else { return }
+        migrated = true  // Set immediately to prevent re-entrant calls
         let config = try makeConfiguration()
         let logger = Logger(label: "songbird.test.migrations")
         let client = PostgresClient(configuration: config)

@@ -3,6 +3,10 @@ import Foundation
 import Songbird
 import SQLite
 
+public enum SQLiteSnapshotStoreError: Error {
+    case corruptedRow(column: String, streamName: String)
+}
+
 /// A SQLite-backed snapshot store that persists aggregate state checkpoints.
 ///
 /// Uses a single `snapshots` table with the stream name as the primary key.
@@ -80,8 +84,12 @@ public actor SQLiteSnapshotStore: SnapshotStore {
         )
 
         for row in rows {
-            guard let blob = row[0] as? Blob else { return nil }
-            guard let version = row[1] as? Int64 else { return nil }
+            guard let blob = row[0] as? Blob else {
+                throw SQLiteSnapshotStoreError.corruptedRow(column: "state", streamName: stream.description)
+            }
+            guard let version = row[1] as? Int64 else {
+                throw SQLiteSnapshotStoreError.corruptedRow(column: "version", streamName: stream.description)
+            }
             let data = Data(blob.bytes)
             return (data, version)
         }
