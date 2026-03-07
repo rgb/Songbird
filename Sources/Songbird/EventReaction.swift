@@ -111,8 +111,8 @@ public struct AnyReaction<State: Sendable>: @unchecked Sendable {
     public init(
         eventTypes: [String],
         categories: [String],
-        tryRoute: @escaping (RecordedEvent) throws -> String?,
-        handle: @escaping (State, RecordedEvent) throws -> (
+        tryRoute: @escaping @Sendable (RecordedEvent) throws -> String?,
+        handle: @escaping @Sendable (State, RecordedEvent) throws -> (
             state: State, output: [any Event]
         )
     ) {

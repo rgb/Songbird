@@ -26,19 +26,28 @@ public struct PostgresKeyStore: KeyStore, Sendable {
         // Use ON CONFLICT to handle concurrent inserts safely.
         // If another caller inserted between our SELECT and INSERT,
         // this is a no-op and we fall through to re-read.
+        // If the existing key is expired, replace it with the new key.
         if let expiresAfter {
             let (seconds, attoseconds) = expiresAfter.components
             let totalSeconds = Double(seconds) + Double(attoseconds) / 1e18
             try await client.query("""
                 INSERT INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
                 VALUES (\(reference), \(layerStr), \(keyBytes), NOW(), NOW() + make_interval(secs => \(totalSeconds)))
-                ON CONFLICT (reference, layer) DO NOTHING
+                ON CONFLICT (reference, layer) DO UPDATE SET
+                    key_data = EXCLUDED.key_data,
+                    created_at = EXCLUDED.created_at,
+                    expires_at = EXCLUDED.expires_at
+                WHERE encryption_keys.expires_at IS NOT NULL AND encryption_keys.expires_at <= NOW()
                 """)
         } else {
             try await client.query("""
                 INSERT INTO encryption_keys (reference, layer, key_data, created_at)
                 VALUES (\(reference), \(layerStr), \(keyBytes), NOW())
-                ON CONFLICT (reference, layer) DO NOTHING
+                ON CONFLICT (reference, layer) DO UPDATE SET
+                    key_data = EXCLUDED.key_data,
+                    created_at = EXCLUDED.created_at,
+                    expires_at = EXCLUDED.expires_at
+                WHERE encryption_keys.expires_at IS NOT NULL AND encryption_keys.expires_at <= NOW()
                 """)
         }
 
@@ -56,7 +65,7 @@ public struct PostgresKeyStore: KeyStore, Sendable {
     public func existingKey(for reference: String, layer: KeyLayer) async throws -> SymmetricKey? {
         let layerStr = layer.rawValue
         let rows = try await client.query(
-            "SELECT key_data FROM encryption_keys WHERE reference = \(reference) AND layer = \(layerStr)"
+            "SELECT key_data FROM encryption_keys WHERE reference = \(reference) AND layer = \(layerStr) AND (expires_at IS NULL OR expires_at > NOW())"
         )
 
         for try await (keyData,) in rows.decode((Data,).self) {
@@ -75,7 +84,7 @@ public struct PostgresKeyStore: KeyStore, Sendable {
     public func hasKey(for reference: String, layer: KeyLayer) async throws -> Bool {
         let layerStr = layer.rawValue
         let rows = try await client.query(
-            "SELECT COUNT(*) FROM encryption_keys WHERE reference = \(reference) AND layer = \(layerStr)"
+            "SELECT COUNT(*) FROM encryption_keys WHERE reference = \(reference) AND layer = \(layerStr) AND (expires_at IS NULL OR expires_at > NOW())"
         )
 
         for try await (count,) in rows.decode((Int64,).self) {

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 public enum EventTypeRegistryError: Error, Equatable {
     case unregisteredEventType(String)
@@ -6,25 +7,28 @@ public enum EventTypeRegistryError: Error, Equatable {
 
 /// `EventTypeRegistry` is safe to read and write from any isolation domain.
 ///
-/// `@unchecked Sendable` is justified because all mutable state (`decoders`, `upcasts`)
-/// is protected by an `NSLock`. Every read and write acquires the lock first, ensuring
-/// thread-safe access from any isolation domain. The class is `final` to prevent subclasses
+/// All mutable state (`decoders`, `upcasts`) is protected by a `Mutex`.
+/// Every read and write acquires the lock first, ensuring thread-safe access
+/// from any isolation domain. The class is `final` to prevent subclasses
 /// from breaking this invariant.
 ///
 /// **Important:** All registration (`register`, `registerUpcast`) should happen
 /// at startup before any calls to `decode`. The registry does not guarantee
 /// atomicity between registration and concurrent decoding.
-public final class EventTypeRegistry: @unchecked Sendable {
-    private let lock = NSLock()
-    private var decoders: [String: @Sendable (Data) throws -> any Event] = [:]
-    private var upcasts: [String: @Sendable (any Event) -> any Event] = [:]
+public final class EventTypeRegistry: Sendable {
+    private struct State: Sendable {
+        var decoders: [String: @Sendable (Data) throws -> any Event] = [:]
+        var upcasts: [String: @Sendable (any Event) -> any Event] = [:]
+    }
+
+    private let state = Mutex(State())
 
     public init() {}
 
     public func register<E: Event>(_ type: E.Type, eventTypes: [String]) {
-        lock.withLock {
+        state.withLock { state in
             for eventType in eventTypes {
-                decoders[eventType] = { data in
+                state.decoders[eventType] = { data in
                     try JSONDecoder().decode(E.self, from: data)
                 }
             }
@@ -62,14 +66,14 @@ public final class EventTypeRegistry: @unchecked Sendable {
             "\(U.NewEvent.self) is version \(U.NewEvent.version), expected \(U.OldEvent.version + 1)"
         )
 
-        lock.withLock {
+        state.withLock { state in
             // Register decoder for the old event type string
-            decoders[oldEventType] = { data in
+            state.decoders[oldEventType] = { data in
                 try JSONDecoder().decode(U.OldEvent.self, from: data)
             }
 
             // Store the upcast transform keyed by the old event type string
-            upcasts[oldEventType] = { @Sendable (event: any Event) -> any Event in
+            state.upcasts[oldEventType] = { @Sendable (event: any Event) -> any Event in
                 guard let oldEvent = event as? U.OldEvent else {
                     // Registry misconfiguration: the decoder produced a type that doesn't match the upcast.
                     // This is a programming error, but we return the event unchanged rather than crashing.
@@ -81,7 +85,9 @@ public final class EventTypeRegistry: @unchecked Sendable {
     }
 
     public func decode(_ recorded: RecordedEvent) throws -> any Event {
-        let decoder = lock.withLock { decoders[recorded.eventType] }
+        let (decoder, allUpcasts) = state.withLock { state in
+            (state.decoders[recorded.eventType], state.upcasts)
+        }
 
         guard let decoder else {
             throw EventTypeRegistryError.unregisteredEventType(recorded.eventType)
@@ -90,13 +96,11 @@ public final class EventTypeRegistry: @unchecked Sendable {
         var event = try decoder(recorded.data)
 
         // Walk the upcast chain until no more upcasts exist.
-        // Registration is expected to happen at startup before any decoding,
-        // so the dictionaries are effectively immutable during decode.
+        // We snapshot the upcasts dictionary once above to avoid repeated locking.
         var currentEventType = recorded.eventType
         var visited: Set<String> = [currentEventType]
         while true {
-            let upcastFn = lock.withLock { upcasts[currentEventType] }
-            guard let upcastFn else { break }
+            guard let upcastFn = allUpcasts[currentEventType] else { break }
             event = upcastFn(event)
             currentEventType = event.eventType
             guard visited.insert(currentEventType).inserted else {

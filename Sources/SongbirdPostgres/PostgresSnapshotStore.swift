@@ -16,7 +16,7 @@ public struct PostgresSnapshotStore: SnapshotStore, Sendable {
     ) async throws {
         let streamStr = stream.description
         guard let jsonString = String(data: data, encoding: .utf8) else {
-            throw PostgresEventStoreError.encodingFailed
+            throw PostgresStoreError.encodingFailed
         }
         try await client.query("""
             INSERT INTO snapshots (stream_name, state, version, updated_at)

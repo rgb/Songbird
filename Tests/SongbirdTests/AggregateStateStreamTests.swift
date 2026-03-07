@@ -55,7 +55,7 @@ struct AggregateStateStreamTests {
     func makeStore() -> (InMemoryEventStore, EventTypeRegistry) {
         let registry = EventTypeRegistry()
         registry.register(BalanceAggregate.Event.self, eventTypes: ["BalanceCredited", "BalanceDebited"])
-        return (InMemoryEventStore(registry: registry), registry)
+        return (InMemoryEventStore(), registry)
     }
 
     let stream = StreamName(category: "balance", id: "acct-1")

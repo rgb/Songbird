@@ -4,8 +4,9 @@ import Logging
 import PostgresNIO
 import Songbird
 
-public enum PostgresEventStoreError: Error {
+public enum PostgresStoreError: Error {
     case encodingFailed
+    case corruptedTimestamp(String)
 }
 
 public struct PostgresEventStore: EventStore, Sendable {
@@ -14,7 +15,6 @@ public struct PostgresEventStore: EventStore, Sendable {
     private let logger = Logger(label: "songbird.postgres")
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
-    nonisolated(unsafe) private let iso8601Formatter = ISO8601DateFormatter()
     public let notifyChannel: String
 
     public init(client: PostgresClient, registry: EventTypeRegistry, notifyChannel: String = "songbird_events") {
@@ -39,11 +39,11 @@ public struct PostgresEventStore: EventStore, Sendable {
 
         let eventData = try jsonEncoder.encode(event)
         guard let eventDataString = String(data: eventData, encoding: .utf8) else {
-            throw PostgresEventStoreError.encodingFailed
+            throw PostgresStoreError.encodingFailed
         }
         let metadataData = try jsonEncoder.encode(metadata)
         guard let metadataString = String(data: metadataData, encoding: .utf8) else {
-            throw PostgresEventStoreError.encodingFailed
+            throw PostgresStoreError.encodingFailed
         }
 
         var globalPosition: Int64 = 0
@@ -127,7 +127,9 @@ public struct PostgresEventStore: EventStore, Sendable {
             throw error
         }
 
-        let returnedTimestamp = iso8601Formatter.date(from: normalizedTimestamp) ?? now
+        guard let returnedTimestamp = try? Date(normalizedTimestamp, strategy: .iso8601) else {
+            throw PostgresStoreError.corruptedTimestamp(normalizedTimestamp)
+        }
 
         return RecordedEvent(
             id: eventId,
@@ -261,6 +263,7 @@ public struct PostgresEventStore: EventStore, Sendable {
         var lastGlobalPosition: Int64 = 0  // BIGSERIAL starts at 1, so 0 means "before first"
 
         while true {
+            try Task.checkCancellation()
             let rows = try await client.query("""
                 SELECT global_position, event_type, stream_name, data::text, to_char(timestamp AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), event_hash
                 FROM events

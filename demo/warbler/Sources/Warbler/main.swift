@@ -41,7 +41,7 @@ struct WarblerApp {
 
         // MARK: - Event Store (in-memory for demo; swap to SQLiteEventStore for persistence)
 
-        let eventStore = InMemoryEventStore(registry: registry)
+        let eventStore = InMemoryEventStore()
         let positionStore = InMemoryPositionStore()
         let snapshotStore = InMemorySnapshotStore()
 

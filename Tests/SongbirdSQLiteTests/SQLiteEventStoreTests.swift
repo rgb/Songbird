@@ -222,6 +222,7 @@ struct SQLiteEventStoreTests {
         #expect(result.eventsVerified == 0)
     }
 
+    #if DEBUG
     @Test func tamperedEventBreaksChain() async throws {
         let store = try makeStore()
         _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
@@ -238,6 +239,7 @@ struct SQLiteEventStoreTests {
         #expect(result.eventsVerified == 1)
         #expect(result.brokenAtSequence == 1)
     }
+    #endif
 
     // MARK: - Read Categories (Multi-Category)
 
@@ -362,4 +364,36 @@ struct SQLiteEventStoreTests {
         #expect(events.count == 1)
         #expect(events[0].streamName == s1)
     }
+
+    // MARK: - Read Categories Max Count
+
+    @Test func readCategoriesRespectsMaxCount() async throws {
+        let store = try makeStore()
+        let s1 = StreamName(category: "account", id: "a")
+        let s2 = StreamName(category: "account", id: "b")
+        let s3 = StreamName(category: "account", id: "c")
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: s2, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 300), to: s3, metadata: EventMetadata(), expectedVersion: nil)
+
+        let events = try await store.readCategories(["account"], from: 0, maxCount: 2)
+        #expect(events.count == 2)
+    }
+
+    // MARK: - Verify Chain with NULL Hashes
+
+    #if DEBUG
+    @Test func verifyChainWithNullHashesTreatsAsValid() async throws {
+        let store = try makeStore()
+        _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(AccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        // Clear hashes to simulate pre-hash-chain events
+        try await store.rawExecute("UPDATE events SET event_hash = NULL")
+
+        let result = try await store.verifyChain()
+        #expect(result.intact == true)
+        #expect(result.eventsVerified == 2)
+    }
+    #endif
 }

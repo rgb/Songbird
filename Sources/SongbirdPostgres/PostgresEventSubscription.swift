@@ -15,6 +15,7 @@ private actor NotificationSignal {
     /// Pending waiters -- each continuation is resumed exactly once (with `true` for
     /// notification, or `false` for timeout).
     private var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    private var timeoutTasks: [UUID: Task<Void, Never>] = [:]
 
     /// Establishes the LISTEN connection and begins listening for notifications.
     func start(config: PostgresConnection.Configuration, logger: Logger, channel: String = "songbird_events") async throws {
@@ -40,7 +41,8 @@ private actor NotificationSignal {
     private func notifyWaiters() {
         let pending = waiters
         waiters.removeAll()
-        for (_, continuation) in pending {
+        for (id, continuation) in pending {
+            timeoutTasks.removeValue(forKey: id)?.cancel()
             continuation.resume(returning: true)
         }
     }
@@ -53,7 +55,7 @@ private actor NotificationSignal {
             waiters[id] = continuation
 
             // Launch a timeout task that will resume the continuation if no notification arrives
-            Task {
+            timeoutTasks[id] = Task {
                 try? await Task.sleep(for: timeout)
                 self.timeoutWaiter(id: id)
             }
@@ -63,6 +65,7 @@ private actor NotificationSignal {
     /// Called from the timeout task. Resumes the waiter with `false` if it hasn't
     /// already been resumed by a notification.
     private func timeoutWaiter(id: UUID) {
+        timeoutTasks.removeValue(forKey: id)
         if let continuation = waiters.removeValue(forKey: id) {
             continuation.resume(returning: false)
         }
@@ -74,9 +77,11 @@ private actor NotificationSignal {
         listenTask?.cancel()
         let pending = waiters
         waiters.removeAll()
-        for (_, continuation) in pending {
+        for (id, continuation) in pending {
+            timeoutTasks.removeValue(forKey: id)?.cancel()
             continuation.resume(returning: false)
         }
+        timeoutTasks.removeAll()
         if let connection {
             try? await connection.close()
         }

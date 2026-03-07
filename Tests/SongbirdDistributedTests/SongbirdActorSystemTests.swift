@@ -89,4 +89,24 @@ struct SongbirdActorSystemTests {
             _ = try await remote.greet(name: "Fail")
         }
     }
+
+    @Test func assignIDAutoIncrements() async throws {
+        let system = SongbirdActorSystem(processName: "test")
+        let id1 = system.assignID(Greeter.self)
+        let id2 = system.assignID(Greeter.self)
+        #expect(id1.actorName == "auto-0")
+        #expect(id2.actorName == "auto-1")
+        #expect(id1.processName == "test")
+    }
+
+    @Test func resignIDRemovesActor() async throws {
+        let system = SongbirdActorSystem(processName: "test")
+        let greeter = Greeter(actorSystem: system)
+        let id = greeter.id
+
+        // After resignation, resolving should return nil
+        system.resignID(id)
+        let afterResign = try system.resolve(id: id, as: Greeter.self)
+        #expect(afterResign == nil)
+    }
 }

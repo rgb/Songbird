@@ -21,7 +21,7 @@ struct InMemoryEventStoreTests {
     func makeStore() -> InMemoryEventStore {
         let registry = EventTypeRegistry()
         registry.register(AccountEvent.self, eventTypes: ["Deposited", "Withdrawn"])
-        return InMemoryEventStore(registry: registry)
+        return InMemoryEventStore()
     }
 
     let stream = StreamName(category: "account", id: "123")

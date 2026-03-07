@@ -34,7 +34,7 @@ struct EventSubscriptionTests {
     func makeStores() -> (InMemoryEventStore, InMemoryPositionStore) {
         let registry = EventTypeRegistry()
         registry.register(SubscriptionTestEvent.self, eventTypes: ["Occurred"])
-        return (InMemoryEventStore(registry: registry), InMemoryPositionStore())
+        return (InMemoryEventStore(), InMemoryPositionStore())
     }
 
     func appendEvents(

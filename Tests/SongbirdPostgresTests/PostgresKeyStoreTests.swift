@@ -70,6 +70,33 @@ extension AllPostgresTests { @Suite("PostgresKeyStore") struct KeyStoreTests {
         }
     }
 
+    @Test func expiredKeyIsNotReturned() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+
+            // Create a key with a long expiry so it's valid initially
+            let key1 = try await store.key(for: "ref-exp", layer: .retention, expiresAfter: .seconds(3600))
+
+            // Key should exist immediately
+            #expect(try await store.hasKey(for: "ref-exp", layer: .retention) == true)
+            #expect(try await store.existingKey(for: "ref-exp", layer: .retention) != nil)
+
+            // Manually expire the key by setting expires_at to the past
+            try await client.query(
+                "UPDATE encryption_keys SET expires_at = NOW() - interval '1 hour' WHERE reference = \("ref-exp") AND layer = \("retention")"
+            )
+
+            // Key should now be filtered out
+            #expect(try await store.existingKey(for: "ref-exp", layer: .retention) == nil)
+            #expect(try await store.hasKey(for: "ref-exp", layer: .retention) == false)
+
+            // Requesting a key should generate a new one (replacing the expired one)
+            let key2 = try await store.key(for: "ref-exp", layer: .retention)
+            #expect(key1 != key2)
+        }
+    }
+
     @Test func expiresAfterStoresExpiryAndKeyIsRetrievable() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)

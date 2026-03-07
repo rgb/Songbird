@@ -14,7 +14,6 @@ public actor SQLiteEventStore: EventStore {
     /// is serialized through this actor's custom `DispatchSerialQueue` executor, ensuring
     /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
-    private let registry: EventTypeRegistry
     private let iso8601Formatter = ISO8601DateFormatter()
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
@@ -24,14 +23,13 @@ public actor SQLiteEventStore: EventStore {
         executor.asUnownedSerialExecutor()
     }
 
-    public init(path: String, registry: EventTypeRegistry) throws {
+    public init(path: String, registry: EventTypeRegistry = .init()) throws {
         self.executor = DispatchSerialQueue(label: "songbird.sqlite-event-store")
         if path == ":memory:" {
             self.db = try Connection(.inMemory)
         } else {
             self.db = try Connection(path)
         }
-        self.registry = registry
         try Self.configurePragmas(db)
         try Self.migrate(db)
     }
@@ -251,6 +249,7 @@ public actor SQLiteEventStore: EventStore {
         var lastGlobalPosition: Int64 = 0  // AUTOINCREMENT starts at 1, so 0 means "before first"
 
         while true {
+            try Task.checkCancellation()
             let rows = try db.prepare("""
                 SELECT global_position, event_type, stream_name, data, timestamp, event_hash
                 FROM events

@@ -4,6 +4,10 @@ import Foundation
 import Songbird
 import SQLite
 
+public enum SQLiteKeyStoreError: Error {
+    case corruptedRow(column: String, reference: String)
+}
+
 /// A SQLite-backed key store that persists AES-256 encryption keys.
 ///
 /// Uses an `encryption_keys` table with a composite primary key of `(reference, layer)`.
@@ -65,8 +69,16 @@ public actor SQLiteKeyStore: KeyStore {
         let now = Date()
         let nowStr = iso8601Formatter.string(from: now)
         let expiresAtStr: String? = expiresAfter.map { duration in
-            iso8601Formatter.string(from: now + TimeInterval(duration.components.seconds))
+            let (seconds, attoseconds) = duration.components
+            let totalSeconds = Double(seconds) + Double(attoseconds) / 1e18
+            return iso8601Formatter.string(from: now + totalSeconds)
         }
+
+        // Delete any expired key so the INSERT below can succeed.
+        try db.run(
+            "DELETE FROM encryption_keys WHERE reference = ? AND layer = ? AND expires_at IS NOT NULL AND expires_at <= ?",
+            reference, layer.rawValue, nowStr
+        )
 
         // Use INSERT OR IGNORE to handle concurrent inserts safely.
         // If another caller inserted between our SELECT and INSERT,
@@ -85,8 +97,7 @@ public actor SQLiteKeyStore: KeyStore {
             return existing
         }
 
-        // Should never happen: we just inserted or another caller did
-        return newKey
+        preconditionFailure("Key not found after INSERT OR IGNORE for reference '\(reference)', layer '\(layer.rawValue)'")
     }
 
     public func existingKey(for reference: String, layer: KeyLayer) async throws -> SymmetricKey? {
@@ -97,7 +108,9 @@ public actor SQLiteKeyStore: KeyStore {
         )
 
         for row in rows {
-            guard let blob = row[0] as? Blob else { return nil }
+            guard let blob = row[0] as? Blob else {
+                throw SQLiteKeyStoreError.corruptedRow(column: "key_data", reference: reference)
+            }
             return SymmetricKey(data: Data(blob.bytes))
         }
         return nil
@@ -118,9 +131,21 @@ public actor SQLiteKeyStore: KeyStore {
         )
 
         for row in rows {
-            guard let count = row[0] as? Int64 else { return false }
+            guard let count = row[0] as? Int64 else {
+                throw SQLiteKeyStoreError.corruptedRow(column: "count", reference: reference)
+            }
             return count > 0
         }
         return false
     }
+
+    // MARK: - Test Support
+
+    #if DEBUG
+    /// Execute raw SQL. **Test-only** — used for scenarios like backdating
+    /// expiry timestamps. Not available in release builds.
+    public func rawExecute(_ sql: String, _ bindings: Binding?...) throws {
+        try db.run(sql, bindings)
+    }
+    #endif
 }

@@ -132,7 +132,7 @@ struct RouteHelperTests {
     @Test func executeAndProjectStoresAndProjectsEvents() async throws {
         let registry = EventTypeRegistry()
         registry.register(CounterEvent.self, eventTypes: ["Incremented"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let pipeline = ProjectionPipeline()
         let projector = RecordingProjector()
         await pipeline.register(projector)
@@ -170,7 +170,7 @@ struct RouteHelperTests {
     @Test func executeAndProjectPropagatesCommandFailure() async throws {
         let registry = EventTypeRegistry()
         registry.register(CounterEvent.self, eventTypes: ["Incremented"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let pipeline = ProjectionPipeline()
         let pipelineTask = Task { await pipeline.run() }
         let services = SongbirdServices(

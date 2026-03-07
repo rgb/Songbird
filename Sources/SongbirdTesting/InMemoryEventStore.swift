@@ -6,7 +6,7 @@ public actor InMemoryEventStore: EventStore {
     private var streamPositions: [StreamName: Int64] = [:]
     private var nextGlobalPosition: Int64 = 0
 
-    public init(registry: EventTypeRegistry = EventTypeRegistry()) {
+    public init() {
     }
 
     public func append(

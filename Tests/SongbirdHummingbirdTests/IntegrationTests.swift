@@ -76,7 +76,7 @@ struct IntegrationTests {
     @Test func fullHTTPRequestCycle() async throws {
         let registry = EventTypeRegistry()
         registry.register(BalanceEvent.self, eventTypes: ["Deposited"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let pipeline = ProjectionPipeline()
         let balanceProjector = BalanceProjector()
 

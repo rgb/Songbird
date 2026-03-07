@@ -107,7 +107,7 @@ struct AggregateRepositoryTests {
     func makeRepo() -> (AggregateRepository<BankAccountAggregate>, InMemoryEventStore) {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let repo = AggregateRepository<BankAccountAggregate>(store: store, registry: registry)
         return (repo, store)
     }
@@ -210,7 +210,7 @@ struct AggregateRepositoryTests {
 
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let repo = AggregateRepository<BankAccountAggregate>(store: store, registry: registry)
 
         _ = try await repo.execute(OpenAccount(name: "Eve"), on: "acct-1", metadata: meta, using: OpenAccountHandler.self)
@@ -253,7 +253,7 @@ struct AggregateRepositoryTests {
     @Test func loadUsesSnapshotWhenAvailable() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(
@@ -281,7 +281,7 @@ struct AggregateRepositoryTests {
     @Test func loadWithoutSnapshotStillWorks() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(
@@ -315,7 +315,7 @@ struct AggregateRepositoryTests {
         wrongRegistry.register(CounterAggregate.Event.self, eventTypes: ["AccountOpened"])
 
         // Use a single store -- append with the store, then load with the wrong registry
-        let store = InMemoryEventStore(registry: wrongRegistry)
+        let store = InMemoryEventStore()
         _ = try await store.append(
             BankAccountEvent.opened(name: "Test"),
             to: StreamName(category: "account", id: "acct-1"),
@@ -336,7 +336,7 @@ struct AggregateRepositoryTests {
     @Test func executeAutoSnapshotsEveryNEvents() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(
@@ -379,7 +379,7 @@ struct AggregateRepositoryTests {
 
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(
@@ -408,7 +408,7 @@ struct AggregateRepositoryTests {
     @Test func executeWithPolicyNoneDoesNotSnapshot() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(
@@ -431,7 +431,7 @@ struct AggregateRepositoryTests {
     @Test func explicitSaveSnapshotWorks() async throws {
         let registry = EventTypeRegistry()
         registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
-        let store = InMemoryEventStore(registry: registry)
+        let store = InMemoryEventStore()
         let snapshotStore = InMemorySnapshotStore()
 
         let repo = AggregateRepository<BankAccountAggregate>(

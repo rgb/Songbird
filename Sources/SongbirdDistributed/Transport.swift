@@ -223,6 +223,10 @@ final class MessageFrameDecoder: ByteToMessageDecoder, @unchecked Sendable {
         }
 
         guard length <= maxWireMessageSize else {
+            let logger = Logger(label: "songbird.transport.decoder")
+            logger.error("Inbound message exceeds max size", metadata: [
+                "size": "\(length)", "max": "\(maxWireMessageSize)",
+            ])
             context.close(promise: nil)
             return .needMoreData
         }
@@ -275,8 +279,13 @@ final class ServerInboundHandler: ChannelInboundHandler, @unchecked Sendable {
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var buffer = unwrapInboundIn(data)
         guard let bytes = buffer.readBytes(length: buffer.readableBytes) else { return }
-        guard let message = try? JSONDecoder().decode(WireMessage.self, from: Data(bytes)) else {
-            Self.logger.warning("Failed to decode incoming message, dropping")
+        let message: WireMessage
+        do {
+            message = try JSONDecoder().decode(WireMessage.self, from: Data(bytes))
+        } catch {
+            Self.logger.warning("Failed to decode incoming message, dropping", metadata: [
+                "error": "\(error)",
+            ])
             return
         }
 

@@ -177,6 +177,41 @@ struct SongbirdServicesTests {
         try? await serviceTask.value
     }
 
+    @Test func registerMultipleProjectors() async throws {
+        let store = InMemoryEventStore()
+        let pipeline = ProjectionPipeline()
+        let projectorA = RecordingProjector(id: "projector-a")
+        let projectorB = RecordingProjector(id: "projector-b")
+
+        var services = SongbirdServices(
+            eventStore: store,
+            projectionPipeline: pipeline,
+            positionStore: InMemoryPositionStore(),
+            eventRegistry: EventTypeRegistry()
+        )
+        services.registerProjector(projectorA)
+        services.registerProjector(projectorB)
+
+        let serviceTask = Task { try await services.run() }
+
+        let recorded = try await store.append(
+            ServicesTestEvent(),
+            to: StreamName(category: "test", id: "1"),
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+        await pipeline.enqueue(recorded)
+        try await pipeline.waitForIdle()
+
+        let countA = await projectorA.appliedEvents.count
+        let countB = await projectorB.appliedEvents.count
+        #expect(countA == 1)
+        #expect(countB == 1)
+
+        serviceTask.cancel()
+        try? await serviceTask.value
+    }
+
     @Test func registerInjectorAndRun() async throws {
         let store = InMemoryEventStore()
         let pipeline = ProjectionPipeline()

@@ -190,7 +190,7 @@ struct ReadModelStoreTests {
     @Test func rebuildReplaysAllEvents() async throws {
         let registry = EventTypeRegistry()
         registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
-        let eventStore = InMemoryEventStore(registry: registry)
+        let eventStore = InMemoryEventStore()
 
         let meta = EventMetadata(traceId: "test")
         let stream = StreamName(category: "item", id: "1")
@@ -209,7 +209,7 @@ struct ReadModelStoreTests {
     @Test func rebuildProcessesMultipleBatches() async throws {
         let registry = EventTypeRegistry()
         registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
-        let eventStore = InMemoryEventStore(registry: registry)
+        let eventStore = InMemoryEventStore()
 
         let meta = EventMetadata(traceId: "test")
         let stream = StreamName(category: "item", id: "1")
@@ -241,7 +241,7 @@ struct ReadModelStoreTests {
         // Setup
         let registry = EventTypeRegistry()
         registry.register(TestEvent.self, eventTypes: ["ItemAdded"])
-        let eventStore = InMemoryEventStore(registry: registry)
+        let eventStore = InMemoryEventStore()
         let readModel = try ReadModelStore()
 
         await readModel.registerMigration { conn in
@@ -298,6 +298,14 @@ struct ReadModelStoreTests {
         await store.registerTable("line_items")
         let tables = await store.registeredTables
         #expect(tables == ["orders", "line_items"])
+    }
+
+    @Test func registerTableDeduplicates() async throws {
+        let store = try ReadModelStore()
+        await store.registerTable("users")
+        await store.registerTable("users")
+        let tables = await store.registeredTables
+        #expect(tables == ["users"])
     }
 
     // MARK: Cold Tier Mirrors & UNION ALL Views

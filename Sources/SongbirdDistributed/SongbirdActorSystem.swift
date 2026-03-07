@@ -27,6 +27,11 @@ import Synchronization
 /// )
 /// let result = try await handler.doSomething()
 /// ```
+///
+/// `@unchecked Sendable` is justified because all mutable state (`localActors`,
+/// `nextAutoId`, `clients`, `serverBox`) is protected by `LockedBox` (backed by `Mutex`).
+/// Every read and write acquires the lock first. The `DistributedActorSystem` protocol
+/// requires synchronous (non-`async`) methods, preventing the use of an actor.
 public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Sendable {
     public typealias ActorID = SongbirdActorID
     public typealias InvocationEncoder = SongbirdInvocationEncoder
@@ -230,7 +235,10 @@ struct ActorSystemMessageHandler: WireMessageHandler {
     let system: SongbirdActorSystem
 
     func handleMessage(_ message: WireMessage, channel: any Channel) async {
-        guard case .call(let call) = message else { return }
+        guard case .call(let call) = message else {
+            Self.logger.warning("Server received non-call message, ignoring")
+            return
+        }
 
         let response: WireMessage
         do {

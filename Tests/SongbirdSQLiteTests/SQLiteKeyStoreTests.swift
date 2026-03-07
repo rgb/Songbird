@@ -56,6 +56,7 @@ struct SQLiteKeyStoreTests {
         #expect(try await store.hasKey(for: "entity-1", layer: .pii) == false)
     }
 
+    #if DEBUG
     @Test func expiredKeyIsNotReturned() async throws {
         let store = try makeStore()
 
@@ -68,7 +69,7 @@ struct SQLiteKeyStoreTests {
 
         // Manually backdate expires_at to a past timestamp
         let pastDate = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -60))
-        try store.db.run(
+        try await store.rawExecute(
             "UPDATE encryption_keys SET expires_at = ? WHERE reference = ? AND layer = ?",
             pastDate, "entity-1", KeyLayer.pii.rawValue
         )
@@ -77,6 +78,7 @@ struct SQLiteKeyStoreTests {
         #expect(try await store.existingKey(for: "entity-1", layer: .pii) == nil)
         #expect(try await store.hasKey(for: "entity-1", layer: .pii) == false)
     }
+    #endif
 
     @Test func nonExpiringKeyIsAlwaysReturned() async throws {
         let store = try makeStore()
@@ -89,6 +91,7 @@ struct SQLiteKeyStoreTests {
         #expect(try await store.hasKey(for: "entity-1", layer: .pii) == true)
     }
 
+    #if DEBUG
     @Test func keyWithExpiryReturnsNewKeyAfterExpiry() async throws {
         let store = try makeStore()
 
@@ -97,16 +100,14 @@ struct SQLiteKeyStoreTests {
 
         // Manually backdate expires_at to a past timestamp
         let pastDate = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -60))
-        try store.db.run(
+        try await store.rawExecute(
             "UPDATE encryption_keys SET expires_at = ? WHERE reference = ? AND layer = ?",
             pastDate, "entity-1", KeyLayer.pii.rawValue
         )
 
-        // Delete the expired row so a new key can be created
-        try await store.deleteKey(for: "entity-1", layer: .pii)
-
-        // Request a new key — should generate a fresh one since the old one was deleted
+        // Request a new key — should generate a fresh one (expired key gets cleaned up)
         let newKey = try await store.key(for: "entity-1", layer: .pii, expiresAfter: .seconds(3600))
         #expect(newKey != originalKey)
     }
+    #endif
 }

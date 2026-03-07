@@ -34,7 +34,7 @@ struct StreamSubscriptionTests {
     func makeStore() -> InMemoryEventStore {
         let registry = EventTypeRegistry()
         registry.register(StreamTestEvent.self, eventTypes: ["Updated"])
-        return InMemoryEventStore(registry: registry)
+        return InMemoryEventStore()
     }
 
     // MARK: - Basic Consumption
