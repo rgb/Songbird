@@ -93,10 +93,10 @@ public struct PostgresEventStore: EventStore, Sendable {
                     )
                 }
 
-                let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(normalizedData)\0\(normalizedTimestamp)"
-                let eventHash = SHA256.hash(data: Data(hashInput.utf8))
-                    .map { String(format: "%02x", $0) }
-                    .joined()
+                let eventHash = Self.computeEventHash(
+                    previousHash: previousHash, eventType: eventType,
+                    streamName: streamStr, data: normalizedData, timestamp: normalizedTimestamp
+                )
 
                 try await connection.query(
                     "UPDATE events SET event_hash = \(eventHash) WHERE global_position = \(globalPosition + 1)",
@@ -292,10 +292,10 @@ public struct PostgresEventStore: EventStore, Sendable {
                 batchCount += 1
                 lastGlobalPosition = globalPos
 
-                let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(dataStr)\0\(timestamp)"
-                let computedHash = SHA256.hash(data: Data(hashInput.utf8))
-                    .map { String(format: "%02x", $0) }
-                    .joined()
+                let computedHash = Self.computeEventHash(
+                    previousHash: previousHash, eventType: eventType,
+                    streamName: streamName, data: dataStr, timestamp: timestamp
+                )
 
                 if let storedHash, storedHash != computedHash {
                     return ChainVerificationResult(
@@ -327,6 +327,16 @@ public struct PostgresEventStore: EventStore, Sendable {
     #endif
 
     // MARK: - Private Helpers
+
+    private static func computeEventHash(
+        previousHash: String, eventType: String,
+        streamName: String, data: String, timestamp: String
+    ) -> String {
+        let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(data)\0\(timestamp)"
+        return SHA256.hash(data: Data(hashInput.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
 
     private func currentStreamVersion(streamName: String) async throws -> Int64 {
         let rows = try await client.query(

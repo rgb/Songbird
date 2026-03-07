@@ -125,10 +125,10 @@ public actor SQLiteEventStore: EventStore {
 
             // Hash chain
             let previousHash = try lastEventHash() ?? HashChain.genesisSeed
-            let hashInput = "\(previousHash)\0\(eventType)\0\(streamStr)\0\(eventDataString)\0\(iso8601)"
-            let eventHash = SHA256.hash(data: Data(hashInput.utf8))
-                .map { String(format: "%02x", $0) }
-                .joined()
+            let eventHash = Self.computeEventHash(
+                previousHash: previousHash, eventType: eventType,
+                streamName: streamStr, data: eventDataString, timestamp: iso8601
+            )
 
             try db.run("""
                 INSERT INTO events (stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp, event_hash)
@@ -274,10 +274,10 @@ public actor SQLiteEventStore: EventStore {
                 let storedHash = row[5] as? String
                 lastGlobalPosition = globalPos
 
-                let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(data)\0\(timestamp)"
-                let computedHash = SHA256.hash(data: Data(hashInput.utf8))
-                    .map { String(format: "%02x", $0) }
-                    .joined()
+                let computedHash = Self.computeEventHash(
+                    previousHash: previousHash, eventType: eventType,
+                    streamName: streamName, data: data, timestamp: timestamp
+                )
 
                 if let storedHash, storedHash != computedHash {
                     return ChainVerificationResult(
@@ -312,6 +312,16 @@ public actor SQLiteEventStore: EventStore {
     #endif
 
     // MARK: - Private Helpers
+
+    private static func computeEventHash(
+        previousHash: String, eventType: String,
+        streamName: String, data: String, timestamp: String
+    ) -> String {
+        let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(data)\0\(timestamp)"
+        return SHA256.hash(data: Data(hashInput.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
 
     private func currentStreamVersion(_ streamName: String) throws -> Int64 {
         let result = try db.scalar("""
