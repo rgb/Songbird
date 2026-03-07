@@ -55,11 +55,14 @@ struct ProjectionFlushMiddlewareTests {
         // because enqueuedPosition < 0. But if an event were enqueued without run(),
         // waitForIdle would time out. The middleware catches all errors from
         // waitForIdle, so the HTTP response is always returned regardless.
+        // A short timeout avoids a 5-second wait in this test.
         let pipeline = ProjectionPipeline()
 
         let router = Router(context: SongbirdRequestContext.self)
         router.addMiddleware {
-            ProjectionFlushMiddleware<SongbirdRequestContext>(pipeline: pipeline)
+            ProjectionFlushMiddleware<SongbirdRequestContext>(
+                pipeline: pipeline, timeout: .milliseconds(100)
+            )
         }
         router.get("/test") { _, _ -> String in
             // Enqueue an event that will never be projected (pipeline not running)
