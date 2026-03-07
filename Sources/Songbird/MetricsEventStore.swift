@@ -65,15 +65,23 @@ extension MetricsEventStore: EventStore {
         let dims: [(String, String)] = [("stream_category", stream.category), ("read_type", "stream")]
         let start = ContinuousClock.now
 
-        let results = try await inner.readStream(stream, from: position, maxCount: maxCount)
-        let elapsed = ContinuousClock.now - start
+        do {
+            let results = try await inner.readStream(stream, from: position, maxCount: maxCount)
+            let elapsed = ContinuousClock.now - start
 
-        Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
-            .recordNanoseconds(elapsed.nanoseconds)
-        Counter(label: "songbird_event_store_read_events_total")
-            .increment(by: Int64(results.count))
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_events_total")
+                .increment(by: Int64(results.count))
 
-        return results
+            return results
+        } catch {
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_errors_total", dimensions: dims).increment()
+            throw error
+        }
     }
 
     public func readCategories(
@@ -85,17 +93,25 @@ extension MetricsEventStore: EventStore {
         let dims: [(String, String)] = [("read_type", readType)]
         let start = ContinuousClock.now
 
-        let results = try await inner.readCategories(
-            categories, from: globalPosition, maxCount: maxCount
-        )
-        let elapsed = ContinuousClock.now - start
+        do {
+            let results = try await inner.readCategories(
+                categories, from: globalPosition, maxCount: maxCount
+            )
+            let elapsed = ContinuousClock.now - start
 
-        Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
-            .recordNanoseconds(elapsed.nanoseconds)
-        Counter(label: "songbird_event_store_read_events_total")
-            .increment(by: Int64(results.count))
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_events_total")
+                .increment(by: Int64(results.count))
 
-        return results
+            return results
+        } catch {
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_errors_total", dimensions: dims).increment()
+            throw error
+        }
     }
 
     public func readLastEvent(
@@ -104,21 +120,44 @@ extension MetricsEventStore: EventStore {
         let dims: [(String, String)] = [("stream_category", stream.category), ("read_type", "lastEvent")]
         let start = ContinuousClock.now
 
-        let result = try await inner.readLastEvent(in: stream)
-        let elapsed = ContinuousClock.now - start
+        do {
+            let result = try await inner.readLastEvent(in: stream)
+            let elapsed = ContinuousClock.now - start
 
-        Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
-            .recordNanoseconds(elapsed.nanoseconds)
-        Counter(label: "songbird_event_store_read_events_total")
-            .increment(by: result != nil ? 1 : 0)
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_events_total")
+                .increment(by: result != nil ? 1 : 0)
 
-        return result
+            return result
+        } catch {
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_read_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_read_errors_total", dimensions: dims).increment()
+            throw error
+        }
     }
 
     public func streamVersion(
         _ stream: StreamName
     ) async throws -> Int64 {
-        try await inner.streamVersion(stream)
+        let dims: [(String, String)] = [("stream_category", stream.category)]
+        let start = ContinuousClock.now
+
+        do {
+            let version = try await inner.streamVersion(stream)
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_stream_version_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            return version
+        } catch {
+            let elapsed = ContinuousClock.now - start
+            Metrics.Timer(label: "songbird_event_store_stream_version_duration_seconds", dimensions: dims)
+                .recordNanoseconds(elapsed.nanoseconds)
+            Counter(label: "songbird_event_store_stream_version_errors_total", dimensions: dims).increment()
+            throw error
+        }
     }
 }
 
