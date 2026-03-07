@@ -55,21 +55,25 @@ public actor SQLiteKeyStore: KeyStore {
 
     // MARK: - KeyStore
 
-    public func key(for reference: String, layer: KeyLayer) async throws -> SymmetricKey {
+    public func key(for reference: String, layer: KeyLayer, expiresAfter: Duration? = nil) async throws -> SymmetricKey {
         if let existing = try await existingKey(for: reference, layer: layer) {
             return existing
         }
 
         let newKey = SymmetricKey(size: .bits256)
         let keyData = newKey.withUnsafeBytes { Data($0) }
-        let now = iso8601Formatter.string(from: Date())
+        let now = Date()
+        let nowStr = iso8601Formatter.string(from: now)
+        let expiresAtStr: String? = expiresAfter.map { duration in
+            iso8601Formatter.string(from: now + TimeInterval(duration.components.seconds))
+        }
 
         try db.run(
             """
             INSERT INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
-            VALUES (?, ?, ?, ?, NULL)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            reference, layer.rawValue, Blob(bytes: [UInt8](keyData)), now
+            reference, layer.rawValue, Blob(bytes: [UInt8](keyData)), nowStr, expiresAtStr
         )
 
         return newKey

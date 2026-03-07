@@ -6,7 +6,7 @@ public actor InMemoryKeyStore: KeyStore {
 
     public init() {}
 
-    public func key(for reference: String, layer: KeyLayer) async throws -> SymmetricKey {
+    public func key(for reference: String, layer: KeyLayer, expiresAfter: Duration? = nil) async throws -> SymmetricKey {
         let id = storageKey(reference, layer)
         if let existing = keys[id] { return existing }
         let key = SymmetricKey(size: .bits256)

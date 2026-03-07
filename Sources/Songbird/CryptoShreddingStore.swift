@@ -60,14 +60,14 @@ extension CryptoShreddingStore: EventStore {
                 let ciphertext = try encrypt(plaintext, using: piiKey)
                 fields[fieldName] = .string("enc:pii:\(ciphertext)")
 
-            case .retention:
-                let retKey = try await keyStore.key(for: entityId, layer: .retention)
+            case .retention(let duration):
+                let retKey = try await keyStore.key(for: entityId, layer: .retention, expiresAfter: duration)
                 let ciphertext = try encrypt(plaintext, using: retKey)
                 fields[fieldName] = .string("enc:ret:\(ciphertext)")
 
-            case .piiAndRetention:
+            case .piiAndRetention(let duration):
                 let piiKey = try await keyStore.key(for: entityId, layer: .pii)
-                let retKey = try await keyStore.key(for: entityId, layer: .retention)
+                let retKey = try await keyStore.key(for: entityId, layer: .retention, expiresAfter: duration)
                 // Double-encrypt: inner PII, outer retention
                 let innerCiphertext = try encrypt(plaintext, using: piiKey)
                 let outerCiphertext = try encrypt(

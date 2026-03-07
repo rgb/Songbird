@@ -14,7 +14,7 @@ public struct PostgresKeyStore: KeyStore, Sendable {
         self.client = client
     }
 
-    public func key(for reference: String, layer: KeyLayer) async throws -> SymmetricKey {
+    public func key(for reference: String, layer: KeyLayer, expiresAfter: Duration? = nil) async throws -> SymmetricKey {
         if let existing = try await existingKey(for: reference, layer: layer) {
             return existing
         }
@@ -26,11 +26,20 @@ public struct PostgresKeyStore: KeyStore, Sendable {
         // Use ON CONFLICT to handle concurrent inserts safely.
         // If another caller inserted between our SELECT and INSERT,
         // this is a no-op and we fall through to re-read.
-        try await client.query("""
-            INSERT INTO encryption_keys (reference, layer, key_data, created_at)
-            VALUES (\(reference), \(layerStr), \(keyBytes), NOW())
-            ON CONFLICT (reference, layer) DO NOTHING
-            """)
+        if let expiresAfter {
+            let expiresSeconds = Int64(expiresAfter.components.seconds)
+            try await client.query("""
+                INSERT INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
+                VALUES (\(reference), \(layerStr), \(keyBytes), NOW(), NOW() + make_interval(secs => \(expiresSeconds)))
+                ON CONFLICT (reference, layer) DO NOTHING
+                """)
+        } else {
+            try await client.query("""
+                INSERT INTO encryption_keys (reference, layer, key_data, created_at)
+                VALUES (\(reference), \(layerStr), \(keyBytes), NOW())
+                ON CONFLICT (reference, layer) DO NOTHING
+                """)
+        }
 
         // Re-read to handle the race: if our INSERT was a no-op,
         // this returns the key the other caller inserted.
