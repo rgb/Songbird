@@ -143,7 +143,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         subscriberId: String,
         categories: [String],
         positionStore: any PositionStore,
-        batchSize: Int = 100,
+        batchSize: Int = SubscriptionDefaults.batchSize,
         fallbackPollInterval: Duration = .seconds(5),
         notifyChannel: String = PostgresDefaults.notifyChannel
     ) {
