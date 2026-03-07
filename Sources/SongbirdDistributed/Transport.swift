@@ -93,7 +93,7 @@ public actor TransportClient {
         }
 
         let requestId = nextRequestId
-        nextRequestId += 1
+        nextRequestId &+= 1
 
         let message = WireMessage.call(.init(
             requestId: requestId,
