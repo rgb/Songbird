@@ -199,6 +199,43 @@ struct StreamSubscriptionTests {
 
     // MARK: - Batch Size
 
+    @Test func batchSizeOneDeliversAllEvents() async throws {
+        let store = makeStore()
+        _ = try await store.append(StreamTestEvent.updated(value: 10), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(StreamTestEvent.updated(value: 20), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+        _ = try await store.append(StreamTestEvent.updated(value: 30), to: stream, metadata: EventMetadata(), expectedVersion: nil)
+
+        let subscription = StreamSubscription(
+            stream: stream,
+            store: store,
+            batchSize: 1,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = StreamEventCollector()
+        let task = Task {
+            for try await event in subscription {
+                await collector.append(event)
+                if await collector.count == 3 { break }
+            }
+        }
+
+        try await task.value
+        let received = await collector.events
+        #expect(received.count == 3)
+        #expect(received[0].position == 0)
+        #expect(received[1].position == 1)
+        #expect(received[2].position == 2)
+
+        // Verify the decoded data matches what was appended
+        let e1 = try received[0].decode(StreamTestEvent.self)
+        let e2 = try received[1].decode(StreamTestEvent.self)
+        let e3 = try received[2].decode(StreamTestEvent.self)
+        #expect(e1.event == .updated(value: 10))
+        #expect(e2.event == .updated(value: 20))
+        #expect(e3.event == .updated(value: 30))
+    }
+
     @Test func respectsBatchSize() async throws {
         let store = makeStore()
         for i in 0..<10 {

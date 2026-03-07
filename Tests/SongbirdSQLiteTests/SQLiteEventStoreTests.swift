@@ -98,6 +98,33 @@ struct SQLiteEventStoreTests {
 
     // MARK: - Read Stream
 
+    @Test func readStreamDataIsDecodable() async throws {
+        let store = try makeStore()
+        let metadata = EventMetadata(traceId: "trace-1", causationId: "cause-1", correlationId: "corr-1", userId: "user-1")
+        _ = try await store.append(AccountEvent.credited(amount: 42), to: stream, metadata: metadata, expectedVersion: nil)
+        _ = try await store.append(AccountEvent.debited(amount: 10, note: "fee"), to: stream, metadata: EventMetadata(traceId: "trace-2"), expectedVersion: nil)
+
+        let events = try await store.readStream(stream, from: 0, maxCount: 100)
+        #expect(events.count == 2)
+
+        // Decode the first event and verify data round-trips
+        let envelope1 = try events[0].decode(AccountEvent.self)
+        #expect(envelope1.event == .credited(amount: 42))
+        #expect(envelope1.metadata.traceId == "trace-1")
+        #expect(envelope1.metadata.causationId == "cause-1")
+        #expect(envelope1.metadata.correlationId == "corr-1")
+        #expect(envelope1.metadata.userId == "user-1")
+        #expect(envelope1.streamName == stream)
+        #expect(envelope1.position == 0)
+        #expect(envelope1.globalPosition == 0)
+
+        // Decode the second event
+        let envelope2 = try events[1].decode(AccountEvent.self)
+        #expect(envelope2.event == .debited(amount: 10, note: "fee"))
+        #expect(envelope2.metadata.traceId == "trace-2")
+        #expect(envelope2.position == 1)
+    }
+
     @Test func readStreamReturnsEventsInOrder() async throws {
         let store = try makeStore()
         _ = try await store.append(AccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)

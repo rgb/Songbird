@@ -56,6 +56,13 @@ struct SQLiteKeyStoreTests {
         #expect(try await store.hasKey(for: "entity-1", layer: .pii) == false)
     }
 
+    @Test func deleteKeyForNonExistentReferenceSucceeds() async throws {
+        let store = try makeStore()
+        // Deleting a key that was never created should complete without throwing
+        try await store.deleteKey(for: "never-existed", layer: .pii)
+        try await store.deleteKey(for: "never-existed", layer: .retention)
+    }
+
     #if DEBUG
     @Test func expiredKeyIsNotReturned() async throws {
         let store = try makeStore()
