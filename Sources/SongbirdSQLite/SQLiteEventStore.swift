@@ -14,7 +14,6 @@ public actor SQLiteEventStore: EventStore {
     /// is serialized through this actor's custom `DispatchSerialQueue` executor, ensuring
     /// that only one thread accesses the connection at a time.
     nonisolated(unsafe) let db: Connection
-    private let iso8601Formatter = ISO8601DateFormatter()
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
     private let executor: DispatchSerialQueue
@@ -113,7 +112,7 @@ public actor SQLiteEventStore: EventStore {
             let position = currentVersion + 1
             let eventId = UUID()
             let now = Date()
-            let iso8601 = iso8601Formatter.string(from: now)
+            let iso8601 = now.formatted(.iso8601)
             let eventData = try jsonEncoder.encode(event)
             guard let eventDataString = String(data: eventData, encoding: .utf8) else {
                 throw SQLiteEventStoreError.encodingFailed
@@ -366,7 +365,7 @@ public actor SQLiteEventStore: EventStore {
         guard let eventId = UUID(uuidString: eventIdStr) else {
             throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
         }
-        guard let timestamp = iso8601Formatter.date(from: timestampStr) else {
+        guard let timestamp = try? Date(timestampStr, strategy: .iso8601) else {
             throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: autoincPos)
         }
 
