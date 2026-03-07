@@ -24,7 +24,7 @@ public typealias Migration = @Sendable (Connection) throws -> Void
 /// }
 /// ```
 public actor ReadModelStore {
-    public let database: Database
+    private let database: Database
 
     /// The underlying DuckDB connection. Marked `nonisolated(unsafe)` because all access
     /// is serialized through this actor's custom `DispatchSerialQueue` executor.
