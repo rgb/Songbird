@@ -409,7 +409,7 @@ struct SQLiteEventStoreTests {
             UPDATE events SET event_type = NULL WHERE global_position = 1;
         """)
 
-        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: 1)) {
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: 0)) {
             _ = try await store.readStream(stream, from: 0, maxCount: 100)
         }
     }
@@ -443,7 +443,7 @@ struct SQLiteEventStoreTests {
             UPDATE events SET data = NULL WHERE global_position = 1;
         """)
 
-        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: 1)) {
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: 0)) {
             _ = try await store.readStream(stream, from: 0, maxCount: 100)
         }
     }
@@ -477,7 +477,7 @@ struct SQLiteEventStoreTests {
             UPDATE events SET timestamp = NULL WHERE global_position = 1;
         """)
 
-        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 1)) {
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 0)) {
             _ = try await store.readStream(stream, from: 0, maxCount: 100)
         }
     }
@@ -497,7 +497,7 @@ struct SQLiteEventStoreTests {
             "UPDATE events SET timestamp = 'not-a-date' WHERE global_position = 1"
         )
 
-        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 1)) {
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: 0)) {
             _ = try await store.readStream(stream, from: 0, maxCount: 100)
         }
     }
@@ -517,7 +517,7 @@ struct SQLiteEventStoreTests {
             "UPDATE events SET event_id = 'not-a-uuid' WHERE global_position = 1"
         )
 
-        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: 1)) {
+        await #expect(throws: SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: 0)) {
             _ = try await store.readStream(stream, from: 0, maxCount: 100)
         }
     }

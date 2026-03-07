@@ -156,6 +156,9 @@ public actor SQLiteEventStore: EventStore {
         return result
     }
 
+    /// The columns selected for event queries, shared across all read methods.
+    private static let eventColumns = "global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp"
+
     // MARK: - Read Stream
 
     public func readStream(
@@ -165,7 +168,7 @@ public actor SQLiteEventStore: EventStore {
     ) async throws -> [RecordedEvent] {
         precondition(maxCount > 0, "maxCount must be positive")
         let rows = try db.prepare("""
-            SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+            SELECT \(Self.eventColumns)
             FROM events
             WHERE stream_name = ? AND position >= ?
             ORDER BY position ASC
@@ -186,7 +189,7 @@ public actor SQLiteEventStore: EventStore {
         let rows: Statement
         if categories.isEmpty {
             rows = try db.prepare("""
-                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                SELECT \(Self.eventColumns)
                 FROM events
                 WHERE global_position >= ?
                 ORDER BY global_position ASC
@@ -194,7 +197,7 @@ public actor SQLiteEventStore: EventStore {
             """, globalPosition + 1, maxCount)
         } else if categories.count == 1 {
             rows = try db.prepare("""
-                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                SELECT \(Self.eventColumns)
                 FROM events
                 WHERE stream_category = ? AND global_position >= ?
                 ORDER BY global_position ASC
@@ -204,7 +207,7 @@ public actor SQLiteEventStore: EventStore {
             let placeholders = categories.map { _ in "?" }.joined(separator: ", ")
             let bindings: [Binding?] = categories.map { $0 as Binding? } + [(globalPosition + 1) as Binding?, maxCount as Binding?]
             rows = try db.prepare("""
-                SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+                SELECT \(Self.eventColumns)
                 FROM events
                 WHERE stream_category IN (\(placeholders)) AND global_position >= ?
                 ORDER BY global_position ASC
@@ -221,7 +224,7 @@ public actor SQLiteEventStore: EventStore {
         in stream: StreamName
     ) async throws -> RecordedEvent? {
         let rows = try db.prepare("""
-            SELECT global_position, stream_name, stream_category, position, event_type, data, metadata, event_id, timestamp
+            SELECT \(Self.eventColumns)
             FROM events
             WHERE stream_name = ?
             ORDER BY position DESC
@@ -347,28 +350,28 @@ public actor SQLiteEventStore: EventStore {
         let globalPosition = autoincPos - 1  // 0-based
 
         guard let streamStr = row[1] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "stream_name", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "stream_name", globalPosition: globalPosition)
         }
         guard let category = row[2] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "stream_category", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "stream_category", globalPosition: globalPosition)
         }
         guard let position = row[3] as? Int64 else {
-            throw SQLiteEventStoreError.corruptedRow(column: "position", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "position", globalPosition: globalPosition)
         }
         guard let eventType = row[4] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "event_type", globalPosition: globalPosition)
         }
         guard let dataStr = row[5] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "data", globalPosition: globalPosition)
         }
         guard let metadataStr = row[6] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "metadata", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "metadata", globalPosition: globalPosition)
         }
         guard let eventIdStr = row[7] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: globalPosition)
         }
         guard let timestampStr = row[8] as? String else {
-            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: globalPosition)
         }
 
         let stream = StreamName(category: category, id: extractId(from: streamStr, category: category))
@@ -376,10 +379,10 @@ public actor SQLiteEventStore: EventStore {
         let metadata = try jsonDecoder.decode(EventMetadata.self, from: Data(metadataStr.utf8))
 
         guard let eventId = UUID(uuidString: eventIdStr) else {
-            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "event_id", globalPosition: globalPosition)
         }
         guard let timestamp = try? Date(timestampStr, strategy: .iso8601) else {
-            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: autoincPos)
+            throw SQLiteEventStoreError.corruptedRow(column: "timestamp", globalPosition: globalPosition)
         }
 
         return RecordedEvent(
