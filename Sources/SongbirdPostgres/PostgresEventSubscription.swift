@@ -159,6 +159,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         self.batchSize = batchSize
         self.fallbackPollInterval = fallbackPollInterval
         self.notifyChannel = notifyChannel
+        precondition(batchSize > 0, "batchSize must be positive")
     }
 
     public func makeAsyncIterator() -> Iterator {
