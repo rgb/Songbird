@@ -20,18 +20,12 @@ enum PGAccountEvent: Event {
 extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests {
     let stream = StreamName(category: "account", id: "abc")
 
-    func makeRegistry() -> EventTypeRegistry {
-        let registry = EventTypeRegistry()
-        registry.register(PGAccountEvent.self, eventTypes: ["Credited", "Debited"])
-        return registry
-    }
-
     // MARK: - Append
 
     @Test func appendReturnsRecordedEvent() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let recorded = try await store.append(
                 PGAccountEvent.credited(amount: 100),
                 to: stream,
@@ -49,7 +43,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendIncrementsPositions() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let r1 = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             let r2 = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             #expect(r1.position == 0)
@@ -62,7 +56,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendToMultipleStreams() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "account", id: "b")
             let r1 = try await store.append(PGAccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
@@ -77,7 +71,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendedDataIsDecodable() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let recorded = try await store.append(PGAccountEvent.credited(amount: 42), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             let envelope = try recorded.decode(PGAccountEvent.self)
             #expect(envelope.event == .credited(amount: 42))
@@ -89,7 +83,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendWithCorrectExpectedVersion() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             let r2 = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: 0)
             #expect(r2.position == 1)
@@ -99,7 +93,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendWithWrongExpectedVersionThrows() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
             await #expect(throws: VersionConflictError.self) {
@@ -111,7 +105,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func appendWithExpectedVersionOnEmptyStreamThrows() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             await #expect(throws: VersionConflictError.self) {
                 _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: 0)
             }
@@ -121,9 +115,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func concurrentAppendsProduceVersionConflict() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let registry = EventTypeRegistry()
-            registry.register(PGAccountEvent.self, eventTypes: ["Credited", "Debited"])
-            let store = PostgresEventStore(client: client, registry: registry)
+            let store = PostgresEventStore(client: client)
             let stream = StreamName(category: "account", id: "conflict-test")
 
             // Seed with one event
@@ -147,7 +139,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readStreamReturnsEventsInOrder() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.debited(amount: 50, note: "ATM"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
@@ -165,7 +157,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readStreamFromPosition() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)
@@ -179,7 +171,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readStreamWithMaxCount() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             for i in 0..<10 {
                 _ = try await store.append(PGAccountEvent.credited(amount: i), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             }
@@ -191,7 +183,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readStreamReturnsEmptyForUnknownStream() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let events = try await store.readStream(StreamName(category: "nope", id: "x"), from: 0, maxCount: 100)
             #expect(events.isEmpty)
         }
@@ -202,7 +194,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readCategoryAcrossStreams() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "account", id: "b")
             let s3 = StreamName(category: "other", id: "c")
@@ -218,7 +210,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readCategoryFromGlobalPosition() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "account", id: "b")
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
@@ -235,7 +227,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readLastEvent() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
@@ -248,7 +240,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readLastEventReturnsNilForEmptyStream() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let last = try await store.readLastEvent(in: stream)
             #expect(last == nil)
         }
@@ -257,7 +249,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func streamVersionReturnsLatestPosition() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
 
@@ -269,7 +261,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func streamVersionReturnsNegativeOneForEmpty() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let version = try await store.streamVersion(stream)
             #expect(version == -1)
         }
@@ -280,7 +272,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readCategoriesWithMultipleCategories() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "invoice", id: "b")
             let s3 = StreamName(category: "order", id: "c")
@@ -298,7 +290,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readAllReturnsAllCategories() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "invoice", id: "b")
             let s3 = StreamName(category: "order", id: "c")
@@ -314,7 +306,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readAllFromGlobalPosition() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "invoice", id: "b")
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
@@ -329,7 +321,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readCategoriesWithEmptyArrayReturnsAllEvents() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "invoice", id: "b")
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)
@@ -343,7 +335,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore") struct EventStoreTests
     @Test func readCategoryConvenienceStillWorks() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let s1 = StreamName(category: "account", id: "a")
             let s2 = StreamName(category: "other", id: "b")
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: s1, metadata: EventMetadata(), expectedVersion: nil)

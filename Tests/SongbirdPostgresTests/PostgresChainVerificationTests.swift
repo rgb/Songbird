@@ -8,16 +8,10 @@ import Testing
 extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") struct ChainVerificationTests {
     let stream = StreamName(category: "account", id: "abc")
 
-    func makeRegistry() -> EventTypeRegistry {
-        let registry = EventTypeRegistry()
-        registry.register(PGAccountEvent.self, eventTypes: ["Credited", "Debited"])
-        return registry
-    }
-
     @Test func hashChainIsIntactAfterAppends() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.debited(amount: 50, note: "fee"), to: stream, metadata: EventMetadata(), expectedVersion: nil)
@@ -32,7 +26,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") str
     @Test func emptyStoreChainIsIntact() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             let result = try await store.verifyChain()
             #expect(result.intact == true)
             #expect(result.eventsVerified == 0)
@@ -43,7 +37,7 @@ extension AllPostgresTests { @Suite("PostgresEventStore Chain Verification") str
     @Test func tamperedEventBreaksChain() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let store = PostgresEventStore(client: client, registry: makeRegistry())
+            let store = PostgresEventStore(client: client)
             _ = try await store.append(PGAccountEvent.credited(amount: 100), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 200), to: stream, metadata: EventMetadata(), expectedVersion: nil)
             _ = try await store.append(PGAccountEvent.credited(amount: 300), to: stream, metadata: EventMetadata(), expectedVersion: nil)

@@ -52,7 +52,7 @@ struct WarblerCatalogService {
 
         // MARK: - Stores (Postgres-backed)
 
-        let eventStore = PostgresEventStore(client: client, registry: registry)
+        let eventStore = PostgresEventStore(client: client)
         let positionStore = PostgresPositionStore(client: client)
         let readModel = try ReadModelStore(path: duckdbPath)
 

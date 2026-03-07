@@ -9,19 +9,12 @@ extension AllPostgresTests { @Suite("PostgresEventSubscription") struct EventSub
 
     let stream = StreamName(category: "order", id: "abc")
 
-    func makeRegistry() -> EventTypeRegistry {
-        let registry = EventTypeRegistry()
-        registry.register(PGSubEvent.self, eventTypes: ["OrderPlaced", "InvoiceSent"])
-        return registry
-    }
-
     // MARK: - Catch Up
 
     @Test func catchesUpOnExistingEvents() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let registry = makeRegistry()
-            let store = PostgresEventStore(client: client, registry: registry)
+            let store = PostgresEventStore(client: client)
             let positionStore = PostgresPositionStore(client: client)
             let connectionConfig = try await PostgresTestHelper.connectionConfig()
 
@@ -53,8 +46,7 @@ extension AllPostgresTests { @Suite("PostgresEventSubscription") struct EventSub
     @Test func receivesEventsViaListenNotification() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let registry = makeRegistry()
-            let store = PostgresEventStore(client: client, registry: registry)
+            let store = PostgresEventStore(client: client)
             let positionStore = PostgresPositionStore(client: client)
             let connectionConfig = try await PostgresTestHelper.connectionConfig()
 
@@ -90,8 +82,7 @@ extension AllPostgresTests { @Suite("PostgresEventSubscription") struct EventSub
     @Test func persistsPositionAcrossRestarts() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let registry = makeRegistry()
-            let store = PostgresEventStore(client: client, registry: registry)
+            let store = PostgresEventStore(client: client)
             let positionStore = PostgresPositionStore(client: client)
             let connectionConfig = try await PostgresTestHelper.connectionConfig()
 
@@ -143,8 +134,7 @@ extension AllPostgresTests { @Suite("PostgresEventSubscription") struct EventSub
     @Test func filtersByCategory() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
-            let registry = makeRegistry()
-            let store = PostgresEventStore(client: client, registry: registry)
+            let store = PostgresEventStore(client: client)
             let positionStore = PostgresPositionStore(client: client)
             let connectionConfig = try await PostgresTestHelper.connectionConfig()
 

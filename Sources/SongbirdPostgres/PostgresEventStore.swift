@@ -13,15 +13,13 @@ public enum PostgresStoreError: Error {
 
 public struct PostgresEventStore: EventStore, Sendable {
     private let client: PostgresClient
-    private let registry: EventTypeRegistry
     private let logger = Logger(label: "songbird.postgres")
     private let jsonEncoder = JSONEncoder()
     private let jsonDecoder = JSONDecoder()
     public let notifyChannel: String
 
-    public init(client: PostgresClient, registry: EventTypeRegistry, notifyChannel: String = "songbird_events") {
+    public init(client: PostgresClient, notifyChannel: String = "songbird_events") {
         self.client = client
-        self.registry = registry
         self.notifyChannel = notifyChannel
     }
 

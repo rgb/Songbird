@@ -123,7 +123,7 @@ struct WarblerIdentityWorkerApp {
         registry.register(UserEvent.self, eventTypes: ["UserRegistered", "ProfileUpdated", "UserDeactivated"])
 
         // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client, registry: registry)
+        let eventStore = PostgresEventStore(client: client)
         let positionStore = PostgresPositionStore(client: client)
 
         // Read model (per-worker DuckDB)

@@ -103,7 +103,7 @@ struct WarblerSubscriptionsWorkerApp {
         registry.register(SubscriptionLifecycleEvent.self, eventTypes: ["AccessGranted", "SubscriptionCancelled"])
 
         // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client, registry: registry)
+        let eventStore = PostgresEventStore(client: client)
         let positionStore = PostgresPositionStore(client: client)
 
         // Read model (per-worker DuckDB)
