@@ -135,6 +135,30 @@ struct AggregateRepositoryTests {
         #expect(version == 2)
     }
 
+    @Test func loadFoldsAcrossMultipleBatches() async throws {
+        let registry = EventTypeRegistry()
+        registry.register(BankAccountEvent.self, eventTypes: ["AccountOpened", "AccountDeposited", "AccountWithdrawn"])
+        let store = InMemoryEventStore()
+        let repo = AggregateRepository<BankAccountAggregate>(
+            store: store,
+            registry: registry,
+            batchSize: 2
+        )
+
+        let stream = StreamName(category: "account", id: "acct-1")
+        _ = try await store.append(BankAccountEvent.opened(name: "Alice"), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.deposited(amount: 100), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.deposited(amount: 50), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.withdrawn(amount: 20), to: stream, metadata: meta, expectedVersion: nil)
+        _ = try await store.append(BankAccountEvent.deposited(amount: 10), to: stream, metadata: meta, expectedVersion: nil)
+
+        // 5 events with batchSize=2 requires 3 batches (2 + 2 + 1).
+        // Final state: opened (balance 0) + 100 + 50 - 20 + 10 = 140
+        let (state, version) = try await repo.load(id: "acct-1")
+        #expect(state == BankAccountAggregate.State(isOpen: true, balance: 140, name: "Alice"))
+        #expect(version == 4)
+    }
+
     // MARK: - Execute
 
     @Test func executeAppendsEvents() async throws {
