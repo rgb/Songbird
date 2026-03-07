@@ -111,6 +111,7 @@ public struct AggregateStateStream<A: Aggregate>: AsyncSequence, Sendable {
                 }
 
                 while true {
+                    try Task.checkCancellation()
                     let batch = try await store.readStream(
                         stream,
                         from: position,

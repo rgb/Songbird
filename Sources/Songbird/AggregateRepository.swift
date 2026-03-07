@@ -36,6 +36,7 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         var currentPosition = fromPosition
         var version: Int64 = fromPosition > 0 ? fromPosition - 1 : -1
         while true {
+            try Task.checkCancellation()
             let records = try await store.readStream(stream, from: currentPosition, maxCount: batchSize)
             for record in records {
                 let decoded = try registry.decode(record)

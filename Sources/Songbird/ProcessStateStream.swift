@@ -92,6 +92,7 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
                 initialFoldDone = true
 
                 while true {
+                    try Task.checkCancellation()
                     let batch = try await store.readCategories(
                         categories,
                         from: globalPosition,
