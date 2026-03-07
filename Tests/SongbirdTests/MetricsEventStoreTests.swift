@@ -40,8 +40,8 @@ struct MetricsEventStoreTests {
             dimensions: [("stream_category", "order")]
         )
         #expect(timer != nil)
-        #expect(timer!.values.count == 1)
-        #expect(timer!.values[0] > 0)
+        #expect((timer?.values.count ?? 0) == 1)
+        #expect((timer?.values.first ?? 0) > 0)
     }
 
     @Test func readStreamEmitsTimerAndEventCount() async throws {
@@ -184,7 +184,7 @@ struct MetricsEventStoreTests {
             dimensions: [("stream_category", "order")]
         )
         #expect(timer != nil)
-        #expect(timer!.values.count == 1)
+        #expect((timer?.values.count ?? 0) == 1)
 
         // Conflict counter should NOT increment
         let conflictCounter = TestMetricsFactory.shared.counter(
@@ -217,10 +217,10 @@ struct MetricsEventStoreTests {
             dimensions: [("stream_category", "order")]
         )
         #expect(timer != nil)
-        #expect(timer!.values.count == 1)
+        #expect((timer?.values.count ?? 0) == 1)
     }
 
-    @Test func streamVersionEmitsNoMetrics() async throws {
+    @Test func streamVersionEmitsDurationTimer() async throws {
         let store = makeStore()
         let stream = StreamName(category: "order", id: "1")
 
@@ -232,12 +232,73 @@ struct MetricsEventStoreTests {
 
         _ = try await store.streamVersion(stream)
 
-        // streamVersion is lightweight — no metrics
         let timer = TestMetricsFactory.shared.timer(
-            "songbird_event_store_read_duration_seconds",
-            dimensions: [("read_type", "streamVersion")]
+            "songbird_event_store_stream_version_duration_seconds",
+            dimensions: [("stream_category", "order")]
         )
-        #expect(timer == nil)
+        #expect(timer != nil)
+        #expect((timer?.values.count ?? 0) == 1)
+    }
+
+    // MARK: - Read Error Metrics
+
+    @Test func readStreamErrorRecordsMetrics() async throws {
+        let store = MetricsEventStore(inner: FailingReadStore())
+        let stream = StreamName(category: "order", id: "1")
+
+        do {
+            _ = try await store.readStream(stream, from: 0, maxCount: 10)
+        } catch {}
+
+        let errorCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_read_errors_total",
+            dimensions: [("stream_category", "order"), ("read_type", "stream")]
+        )
+        #expect(errorCounter?.totalValue == 1)
+    }
+
+    @Test func readCategoriesErrorRecordsMetrics() async throws {
+        let store = MetricsEventStore(inner: FailingReadStore())
+
+        do {
+            _ = try await store.readCategories(["order"], from: 0, maxCount: 10)
+        } catch {}
+
+        let errorCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_read_errors_total",
+            dimensions: [("read_type", "categories")]
+        )
+        #expect(errorCounter?.totalValue == 1)
+    }
+
+    @Test func readLastEventErrorRecordsMetrics() async throws {
+        let store = MetricsEventStore(inner: FailingReadStore())
+        let stream = StreamName(category: "order", id: "1")
+
+        do {
+            _ = try await store.readLastEvent(in: stream)
+        } catch {}
+
+        let errorCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_read_errors_total",
+            dimensions: [("stream_category", "order"), ("read_type", "lastEvent")]
+        )
+        #expect(errorCounter?.totalValue == 1)
+    }
+
+    @Test func streamVersionErrorRecordsMetrics() async throws {
+        let store = MetricsEventStore(inner: FailingReadStore())
+        let stream = StreamName(category: "order", id: "1")
+
+        do {
+            _ = try await store.streamVersion(stream)
+        } catch {}
+
+        let errorCounter = TestMetricsFactory.shared.counter(
+            "songbird_event_store_stream_version_errors_total",
+            dimensions: [("stream_category", "order")]
+        )
+        #expect(errorCounter?.totalValue == 1)
     }
 }
 
@@ -255,5 +316,28 @@ private actor FailingAppendStore: EventStore {
     func readCategories(_ categories: [String], from globalPosition: Int64, maxCount: Int) async throws -> [RecordedEvent] { [] }
     func readLastEvent(in stream: StreamName) async throws -> RecordedEvent? { nil }
     func streamVersion(_ stream: StreamName) async throws -> Int64 { -1 }
+}
+
+/// An event store that always throws on all read operations.
+private actor FailingReadStore: EventStore {
+    func append(_ event: some Event, to stream: StreamName, metadata: EventMetadata, expectedVersion: Int64?) async throws -> RecordedEvent {
+        fatalError("FailingReadStore.append should not be called")
+    }
+
+    func readStream(_ stream: StreamName, from position: Int64, maxCount: Int) async throws -> [RecordedEvent] {
+        throw StoreError()
+    }
+
+    func readCategories(_ categories: [String], from globalPosition: Int64, maxCount: Int) async throws -> [RecordedEvent] {
+        throw StoreError()
+    }
+
+    func readLastEvent(in stream: StreamName) async throws -> RecordedEvent? {
+        throw StoreError()
+    }
+
+    func streamVersion(_ stream: StreamName) async throws -> Int64 {
+        throw StoreError()
+    }
 }
 }
