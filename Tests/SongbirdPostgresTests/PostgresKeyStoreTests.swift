@@ -70,6 +70,16 @@ extension AllPostgresTests { @Suite("PostgresKeyStore") struct KeyStoreTests {
         }
     }
 
+    @Test func deleteKeyForNonExistentReferenceSucceeds() async throws {
+        try await PostgresTestHelper.withTestClient { client in
+            try await PostgresTestHelper.cleanTables(client: client)
+            let store = PostgresKeyStore(client: client)
+            // Deleting a key that was never created should complete without throwing
+            try await store.deleteKey(for: "never-existed", layer: .pii)
+            try await store.deleteKey(for: "never-existed", layer: .retention)
+        }
+    }
+
     @Test func expiredKeyIsNotReturned() async throws {
         try await PostgresTestHelper.withTestClient { client in
             try await PostgresTestHelper.cleanTables(client: client)
