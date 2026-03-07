@@ -290,7 +290,17 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
                 throw error
             }
 
-            // Cancelled -- clean up LISTEN connection
+            // Cancelled -- flush position and clean up LISTEN connection
+            if !currentBatch.isEmpty && batchIndex > 0 {
+                let lastDeliveredIndex = Swift.min(batchIndex, currentBatch.count) - 1
+                let lastDelivered = currentBatch[lastDeliveredIndex].globalPosition
+                if lastDelivered > globalPosition {
+                    try? await positionStore.save(
+                        subscriberId: subscriberId,
+                        globalPosition: lastDelivered
+                    )
+                }
+            }
             await notificationSignal.stop()
             return nil
         }
