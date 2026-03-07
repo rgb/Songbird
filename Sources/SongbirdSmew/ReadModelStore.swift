@@ -332,6 +332,7 @@ extension ReadModelStore {
     ) async throws {
         var position: Int64 = 0
         while true {
+            try Task.checkCancellation()
             let batch = try await store.readAll(from: position, maxCount: batchSize)
             guard !batch.isEmpty else { break }
             for record in batch {
