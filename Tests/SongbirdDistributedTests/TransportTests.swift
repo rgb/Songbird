@@ -93,6 +93,81 @@ struct TransportTests {
         }
     }
 
+    @Test func externalCancellationProducesCancellationError() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = TransportServer(socketPath: socketPath, handler: SilentHandler())
+        try await server.start()
+        defer { Task { try await server.stop() } }
+
+        let client = TransportClient(callTimeout: .seconds(30))  // long timeout so it doesn't fire
+        try await client.connect(socketPath: socketPath)
+        defer { Task { try await client.disconnect() } }
+
+        let task = Task {
+            try await client.call(actorName: "a", targetName: "t", arguments: Data())
+        }
+
+        // Give the call time to register
+        try await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        // External cancellation should produce CancellationError, not a timeout
+        do {
+            _ = try await task.value
+            Issue.record("Expected error")
+        } catch is CancellationError {
+            // Correct: external cancellation produces CancellationError
+        } catch {
+            Issue.record("Expected CancellationError, got \(type(of: error)): \(error)")
+        }
+    }
+
+    @Test func serverCrashResolvesPendingCalls() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = TransportServer(socketPath: socketPath, handler: SilentHandler())
+        try await server.start()
+
+        let client = TransportClient(callTimeout: .seconds(30))
+        try await client.connect(socketPath: socketPath)
+
+        // Start a call that will never get a response
+        let task = Task {
+            try await client.call(actorName: "a", targetName: "t", arguments: Data())
+        }
+
+        // Give the call time to register
+        try await Task.sleep(for: .milliseconds(50))
+
+        // Kill the server (simulating a crash)
+        try await server.stop()
+
+        // The pending call should resolve with an error (not hang for 30s)
+        // Use a timeout to ensure the test doesn't hang
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                do {
+                    _ = try await task.value
+                    Issue.record("Expected error from pending call after server crash")
+                } catch is SongbirdDistributedError {
+                    // Correct: disconnect produces SongbirdDistributedError.notConnected
+                } catch {
+                    // Any other error is also acceptable -- the key point is it doesn't hang
+                }
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(5))
+                Issue.record("Pending call did not resolve within 5 seconds after server crash")
+                throw CancellationError()
+            }
+            _ = try await group.next()
+            group.cancelAll()
+        }
+    }
+
     @Test func disconnectDoesNotHang() async throws {
         let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
