@@ -100,7 +100,7 @@ struct TransportTests {
         let client = TransportClient(callTimeout: .milliseconds(200))
         try await client.connect(socketPath: socketPath)
 
-        await #expect(throws: SongbirdDistributedError.self) {
+        await #expect(throws: SongbirdDistributedError.remoteCallFailed("Call timed out")) {
             _ = try await client.call(actorName: "a", targetName: "t", arguments: Data())
         }
 
@@ -202,7 +202,7 @@ struct TransportTests {
     @Test func callBeforeConnectThrowsNotConnected() async throws {
         let client = TransportClient(callTimeout: .seconds(5))
 
-        await #expect(throws: SongbirdDistributedError.self) {
+        await #expect(throws: SongbirdDistributedError.notConnected("no connection")) {
             _ = try await client.call(
                 actorName: "test",
                 targetName: "doSomething",

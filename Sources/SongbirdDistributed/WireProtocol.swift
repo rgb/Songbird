@@ -64,7 +64,7 @@ public enum WireMessage: Codable, Sendable {
 }
 
 /// Errors specific to the SongbirdDistributed module.
-public enum SongbirdDistributedError: Error, CustomStringConvertible {
+public enum SongbirdDistributedError: Error, Equatable, CustomStringConvertible {
     case actorNotFound(SongbirdActorID)
     case invalidArgumentEncoding
     case argumentCountMismatch

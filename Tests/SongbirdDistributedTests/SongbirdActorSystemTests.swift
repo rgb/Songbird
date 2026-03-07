@@ -98,8 +98,14 @@ struct SongbirdActorSystemTests {
             let fakeId = SongbirdActorID(processName: "worker", actorName: "nonexistent")
             let remote = try Greeter.resolve(id: fakeId, using: clientSystem)
 
-            await #expect(throws: SongbirdDistributedError.self) {
+            await #expect {
                 _ = try await remote.greet(name: "Fail")
+            } throws: { error in
+                guard let distributed = error as? SongbirdDistributedError,
+                      case .remoteCallFailed = distributed else {
+                    return false
+                }
+                return true
             }
         } catch {
             try? await clientSystem.shutdown()
