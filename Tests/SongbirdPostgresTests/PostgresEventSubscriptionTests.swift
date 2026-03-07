@@ -195,7 +195,10 @@ extension AllPostgresTests { @Suite("PostgresEventSubscription") struct EventSub
                 try await Task.sleep(for: timeout)
                 throw CancellationError()
             }
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                group.cancelAll()
+                return []
+            }
             group.cancelAll()
             return result
         }
