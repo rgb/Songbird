@@ -99,7 +99,7 @@ struct WarblerIdentityWorkerApp {
         registry.register(UserEvent.self, eventTypes: ["UserRegistered", "ProfileUpdated", "UserDeactivated"])
 
         // Event store (shared SQLite file)
-        let eventStore = try SQLiteEventStore(path: sqlitePath, registry: registry)
+        let eventStore = try SQLiteEventStore(path: sqlitePath)
 
         // Read model (per-worker DuckDB)
         let readModel = try ReadModelStore(path: duckdbPath)

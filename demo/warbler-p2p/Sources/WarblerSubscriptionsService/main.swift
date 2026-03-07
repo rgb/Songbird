@@ -25,7 +25,7 @@ struct WarblerSubscriptionsService {
 
         // MARK: - Stores
 
-        let eventStore = try SQLiteEventStore(path: sqlitePath, registry: registry)
+        let eventStore = try SQLiteEventStore(path: sqlitePath)
         let positionStore = InMemoryPositionStore()
         let readModel = try ReadModelStore(path: duckdbPath)
 

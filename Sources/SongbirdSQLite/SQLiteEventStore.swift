@@ -22,7 +22,7 @@ public actor SQLiteEventStore: EventStore {
         executor.asUnownedSerialExecutor()
     }
 
-    public init(path: String, registry: EventTypeRegistry = .init()) throws {
+    public init(path: String) throws {
         self.executor = DispatchSerialQueue(label: "songbird.sqlite-event-store")
         if path == ":memory:" {
             self.db = try Connection(.inMemory)

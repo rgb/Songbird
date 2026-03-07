@@ -20,9 +20,7 @@ enum AccountEvent: Event {
 @Suite("SQLiteEventStore")
 struct SQLiteEventStoreTests {
     func makeStore() throws -> SQLiteEventStore {
-        let registry = EventTypeRegistry()
-        registry.register(AccountEvent.self, eventTypes: ["Credited", "Debited"])
-        return try SQLiteEventStore(path: ":memory:", registry: registry)
+        try SQLiteEventStore(path: ":memory:")
     }
 
     let stream = StreamName(category: "account", id: "abc")
@@ -302,11 +300,8 @@ struct SQLiteEventStoreTests {
         let dbPath = tempDir.appendingPathComponent("songbird-concurrent-test-\(UUID().uuidString).sqlite").path
         defer { try? FileManager.default.removeItem(atPath: dbPath) }
 
-        let registry = EventTypeRegistry()
-        registry.register(AccountEvent.self, eventTypes: ["Credited", "Debited"])
-
-        let store1 = try SQLiteEventStore(path: dbPath, registry: registry)
-        let store2 = try SQLiteEventStore(path: dbPath, registry: registry)
+        let store1 = try SQLiteEventStore(path: dbPath)
+        let store2 = try SQLiteEventStore(path: dbPath)
 
         let stream = StreamName(category: "account", id: "abc")
 

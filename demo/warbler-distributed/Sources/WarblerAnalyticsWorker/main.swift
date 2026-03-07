@@ -84,7 +84,7 @@ struct WarblerAnalyticsWorkerApp {
         registry.register(AnalyticsEvent.self, eventTypes: ["VideoViewed"])
         registry.register(ViewCountEvent.self, eventTypes: ["ViewCounted"])
 
-        let eventStore = try SQLiteEventStore(path: sqlitePath, registry: registry)
+        let eventStore = try SQLiteEventStore(path: sqlitePath)
         let readModel = try ReadModelStore(path: duckdbPath)
         let positionStore = try SQLitePositionStore(path: sqlitePath)
 
