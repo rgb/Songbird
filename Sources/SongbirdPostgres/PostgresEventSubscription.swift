@@ -27,10 +27,10 @@ private actor NotificationSignal {
 
         // Background task that listens for notifications.
         // Uses the closure-based `listen(on:)` API so UNLISTEN is handled automatically.
-        self.listenTask = Task { [weak self = self] in
+        self.listenTask = Task {
             try await conn.listen(on: "songbird_events") { notifications in
                 for try await _ in notifications {
-                    await self?.notifyWaiters()
+                    self.notifyWaiters()
                 }
             }
         }
@@ -53,9 +53,9 @@ private actor NotificationSignal {
             waiters[id] = continuation
 
             // Launch a timeout task that will resume the continuation if no notification arrives
-            Task { [weak self = self] in
+            Task {
                 try? await Task.sleep(for: timeout)
-                await self?.timeoutWaiter(id: id)
+                self.timeoutWaiter(id: id)
             }
         }
     }
@@ -227,49 +227,54 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
             }
 
             // Poll loop with LISTEN wakeup
-            while !Task.isCancelled {
-                try Task.checkCancellation()
+            do {
+                while !Task.isCancelled {
+                    try Task.checkCancellation()
 
-                // Poll for events
-                let batch = try await store.readCategories(
-                    categories,
-                    from: globalPosition + 1,
-                    maxCount: batchSize
-                )
-
-                if !batch.isEmpty {
-                    currentBatch = batch
-                    batchIndex = 1  // return first element now, start from second next time
-                    return batch[0]
-                }
-
-                // Caught up -- wait for LISTEN notification or fallback timeout
-                let notified = await notificationSignal.wait(timeout: fallbackPollInterval)
-
-                if !notified {
-                    // Timeout with no notification -- do a fallback poll
-                    let fallbackBatch = try await store.readCategories(
+                    // Poll for events
+                    let batch = try await store.readCategories(
                         categories,
                         from: globalPosition + 1,
                         maxCount: batchSize
                     )
 
-                    if !fallbackBatch.isEmpty {
-                        // Events found via fallback that LISTEN missed -- re-establish connection
-                        logger.warning(
-                            "Fallback poll found events missed by LISTEN -- re-establishing connection",
-                            metadata: ["subscriberId": "\(subscriberId)"]
-                        )
-                        try await notificationSignal.reconnect(
-                            config: connectionConfig,
-                            logger: logger
-                        )
-                        currentBatch = fallbackBatch
-                        batchIndex = 1
-                        return fallbackBatch[0]
+                    if !batch.isEmpty {
+                        currentBatch = batch
+                        batchIndex = 1  // return first element now, start from second next time
+                        return batch[0]
                     }
+
+                    // Caught up -- wait for LISTEN notification or fallback timeout
+                    let notified = await notificationSignal.wait(timeout: fallbackPollInterval)
+
+                    if !notified {
+                        // Timeout with no notification -- do a fallback poll
+                        let fallbackBatch = try await store.readCategories(
+                            categories,
+                            from: globalPosition + 1,
+                            maxCount: batchSize
+                        )
+
+                        if !fallbackBatch.isEmpty {
+                            // Events found via fallback that LISTEN missed -- re-establish connection
+                            logger.warning(
+                                "Fallback poll found events missed by LISTEN -- re-establishing connection",
+                                metadata: ["subscriberId": "\(subscriberId)"]
+                            )
+                            try await notificationSignal.reconnect(
+                                config: connectionConfig,
+                                logger: logger
+                            )
+                            currentBatch = fallbackBatch
+                            batchIndex = 1
+                            return fallbackBatch[0]
+                        }
+                    }
+                    // If notified, loop back to poll for the actual events
                 }
-                // If notified, loop back to poll for the actual events
+            } catch {
+                await notificationSignal.stop()
+                throw error
             }
 
             // Cancelled -- clean up LISTEN connection
