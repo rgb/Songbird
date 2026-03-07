@@ -126,9 +126,8 @@ internal struct EncryptedPayload: Event {
         }
         self.fields = dict
         // EncryptedPayload is always constructed via init(originalEventType:fields:).
-        // This Decodable path exists only for protocol conformance and lacks the
-        // original event type. Callers should not rely on decoding EncryptedPayload.
-        self.originalEventType = ""
+        // If this Decodable path is ever reached, it indicates a programming error.
+        preconditionFailure("EncryptedPayload must not be decoded from storage — use init(originalEventType:fields:)")
     }
 
     static func == (lhs: EncryptedPayload, rhs: EncryptedPayload) -> Bool {
