@@ -125,18 +125,12 @@ public actor SQLiteKeyStore: KeyStore {
 
     public func hasKey(for reference: String, layer: KeyLayer) async throws -> Bool {
         let nowStr = Date.now.formatted(.iso8601)
-        let rows = try db.prepare(
+        let result = try db.scalar(
             "SELECT COUNT(*) FROM encryption_keys WHERE reference = ? AND layer = ? AND (expires_at IS NULL OR expires_at > ?)",
             reference, layer.rawValue, nowStr
         )
-
-        for row in rows {
-            guard let count = row[0] as? Int64 else {
-                throw SQLiteKeyStoreError.corruptedRow(column: "count", reference: reference)
-            }
-            return count > 0
-        }
-        return false
+        let count = (result as? Int64) ?? 0
+        return count > 0
     }
 
     // MARK: - Test Support

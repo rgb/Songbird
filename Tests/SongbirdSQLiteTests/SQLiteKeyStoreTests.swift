@@ -75,7 +75,7 @@ struct SQLiteKeyStoreTests {
         #expect(try await store.hasKey(for: "entity-1", layer: .pii) == true)
 
         // Manually backdate expires_at to a past timestamp
-        let pastDate = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -60))
+        let pastDate = Date(timeIntervalSinceNow: -60).formatted(.iso8601)
         try await store.rawExecute(
             "UPDATE encryption_keys SET expires_at = ? WHERE reference = ? AND layer = ?",
             pastDate, "entity-1", KeyLayer.pii.rawValue
@@ -106,7 +106,7 @@ struct SQLiteKeyStoreTests {
         let originalKey = try await store.key(for: "entity-1", layer: .pii, expiresAfter: .seconds(3600))
 
         // Manually backdate expires_at to a past timestamp
-        let pastDate = ISO8601DateFormatter().string(from: Date(timeIntervalSinceNow: -60))
+        let pastDate = Date(timeIntervalSinceNow: -60).formatted(.iso8601)
         try await store.rawExecute(
             "UPDATE encryption_keys SET expires_at = ? WHERE reference = ? AND layer = ?",
             pastDate, "entity-1", KeyLayer.pii.rawValue

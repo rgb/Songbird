@@ -3,7 +3,6 @@ import Testing
 
 @testable import Songbird
 @testable import SongbirdSQLite
-@testable import SongbirdTesting
 
 enum AccountEvent: Event {
     case credited(amount: Int)
