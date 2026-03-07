@@ -102,11 +102,11 @@ public struct AnyReaction<State: Sendable>: @unchecked Sendable {
 
     /// Phase 1: Attempts to route the event. Returns the entity instance ID, or nil if
     /// the event type doesn't match or the reactor declines to handle it.
-    public let tryRoute: (RecordedEvent) throws -> String?
+    public let tryRoute: @Sendable (RecordedEvent) throws -> String?
 
     /// Phase 2: Given the current per-entity state and the recorded event, returns the
     /// new state and any output events to append.
-    public let handle: (State, RecordedEvent) throws -> (state: State, output: [any Event])
+    public let handle: @Sendable (State, RecordedEvent) throws -> (state: State, output: [any Event])
 
     public init(
         eventTypes: [String],

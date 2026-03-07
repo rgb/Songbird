@@ -50,7 +50,7 @@ extension EventStore {
     }
 }
 
-public struct VersionConflictError: Error, CustomStringConvertible {
+public struct VersionConflictError: Error, Equatable, CustomStringConvertible {
     public let streamName: StreamName
     public let expectedVersion: Int64
     public let actualVersion: Int64
