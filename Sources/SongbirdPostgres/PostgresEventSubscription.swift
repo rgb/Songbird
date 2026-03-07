@@ -51,14 +51,18 @@ private actor NotificationSignal {
     func wait(timeout: Duration) async -> Bool {
         let id = UUID()
 
-        return await withCheckedContinuation { continuation in
-            waiters[id] = continuation
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                waiters[id] = continuation
 
-            // Launch a timeout task that will resume the continuation if no notification arrives
-            timeoutTasks[id] = Task {
-                try? await Task.sleep(for: timeout)
-                self.timeoutWaiter(id: id)
+                // Launch a timeout task that will resume the continuation if no notification arrives
+                timeoutTasks[id] = Task {
+                    try? await Task.sleep(for: timeout)
+                    self.timeoutWaiter(id: id)
+                }
             }
+        } onCancel: {
+            Task { await self.timeoutWaiter(id: id) }
         }
     }
 
@@ -144,7 +148,7 @@ public struct PostgresEventSubscription: AsyncSequence, Sendable {
         categories: [String],
         positionStore: any PositionStore,
         batchSize: Int = SubscriptionDefaults.batchSize,
-        fallbackPollInterval: Duration = .seconds(5),
+        fallbackPollInterval: Duration = PostgresDefaults.fallbackPollInterval,
         notifyChannel: String = PostgresDefaults.notifyChannel
     ) {
         self.store = store

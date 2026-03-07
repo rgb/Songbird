@@ -15,6 +15,9 @@ public enum PostgresStoreError: Error {
 public enum PostgresDefaults {
     /// The default PostgreSQL NOTIFY channel used for event notifications.
     public static let notifyChannel = "songbird_events"
+
+    /// The default fallback poll interval for LISTEN/NOTIFY-based subscriptions.
+    public static let fallbackPollInterval: Duration = .seconds(5)
 }
 
 public struct PostgresEventStore: EventStore, Sendable {
