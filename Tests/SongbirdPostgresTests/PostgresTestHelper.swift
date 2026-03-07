@@ -4,6 +4,10 @@ import PostgresNIO
 import TestContainers
 @testable import SongbirdPostgres
 
+enum PostgresTestHelperError: Error {
+    case containerNotStarted
+}
+
 /// Manages a Postgres test container that starts lazily on first use and lives for the process duration.
 private actor ContainerState {
     private var host: String?
@@ -46,7 +50,7 @@ private actor ContainerState {
 
     func ensureMigrated() async throws {
         guard !migrated else { return }
-        let config = makeConfiguration()
+        let config = try makeConfiguration()
         let logger = Logger(label: "songbird.test.migrations")
         let client = PostgresClient(configuration: config)
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -57,9 +61,9 @@ private actor ContainerState {
         migrated = true
     }
 
-    func makeConfiguration() -> PostgresClient.Configuration {
+    func makeConfiguration() throws -> PostgresClient.Configuration {
         guard let host, let port else {
-            fatalError("Container not started — call ensureStarted() first")
+            throw PostgresTestHelperError.containerNotStarted
         }
         return PostgresClient.Configuration(
             host: host, port: port,
@@ -68,9 +72,9 @@ private actor ContainerState {
         )
     }
 
-    func makeConnectionConfiguration() -> PostgresConnection.Configuration {
+    func makeConnectionConfiguration() throws -> PostgresConnection.Configuration {
         guard let host, let port else {
-            fatalError("Container not started — call ensureStarted() first")
+            throw PostgresTestHelperError.containerNotStarted
         }
         return PostgresConnection.Configuration(
             host: host, port: port,
@@ -92,7 +96,7 @@ enum PostgresTestHelper {
         try await containerState.ensureStarted()
         try await containerState.ensureMigrated()
 
-        let config = await containerState.makeConfiguration()
+        let config = try await containerState.makeConfiguration()
         let client = PostgresClient(configuration: config)
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
@@ -105,7 +109,7 @@ enum PostgresTestHelper {
     /// The container is started lazily on first call.
     static func connectionConfig() async throws -> PostgresConnection.Configuration {
         try await containerState.ensureStarted()
-        return await containerState.makeConnectionConfiguration()
+        return try await containerState.makeConnectionConfiguration()
     }
 
     /// Cleans all Songbird tables for test isolation.
