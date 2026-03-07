@@ -58,6 +58,8 @@ public actor InjectorRunner<I: Injector> {
                     label: "songbird_injector_append_total",
                     dimensions: injectorDimensions + [("status", "success")]
                 ).increment()
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 result = .failure(error)
                 let elapsed = ContinuousClock.now - start

@@ -78,6 +78,7 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
 
         // Auto-snapshot based on policy
         if case .everyNEvents(let n) = snapshotPolicy, let snapshotStore, !recorded.isEmpty {
+            precondition(n > 0, "everyNEvents count must be positive")
             let newVersion = version + Int64(recorded.count)
             // Bucket comparison: snapshot when the new total event count crosses
             // an N-event boundary. This handles multi-event commands correctly —
