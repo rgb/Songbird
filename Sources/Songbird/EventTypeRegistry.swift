@@ -93,11 +93,15 @@ public final class EventTypeRegistry: @unchecked Sendable {
         // Registration is expected to happen at startup before any decoding,
         // so the dictionaries are effectively immutable during decode.
         var currentEventType = recorded.eventType
+        var visited: Set<String> = [currentEventType]
         while true {
             let upcastFn = lock.withLock { upcasts[currentEventType] }
             guard let upcastFn else { break }
             event = upcastFn(event)
             currentEventType = event.eventType
+            guard visited.insert(currentEventType).inserted else {
+                preconditionFailure("Upcast cycle detected at event type '\(currentEventType)'")
+            }
         }
 
         return event
