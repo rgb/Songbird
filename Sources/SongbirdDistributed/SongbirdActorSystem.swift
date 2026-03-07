@@ -272,12 +272,20 @@ struct ActorSystemMessageHandler: WireMessageHandler {
             if let fallbackData = try? JSONEncoder().encode(fallback) {
                 var buffer = channel.allocator.buffer(capacity: fallbackData.count)
                 buffer.writeBytes(fallbackData)
-                channel.writeAndFlush(buffer, promise: nil)
+                let p = channel.eventLoop.makePromise(of: Void.self)
+                p.futureResult.whenFailure { err in
+                    Self.logger.error("Failed to write error response", metadata: ["error": "\(err)"])
+                }
+                channel.writeAndFlush(buffer, promise: p)
             }
             return
         }
         var buffer = channel.allocator.buffer(capacity: responseData.count)
         buffer.writeBytes(responseData)
-        channel.writeAndFlush(buffer, promise: nil)
+        let p = channel.eventLoop.makePromise(of: Void.self)
+        p.futureResult.whenFailure { err in
+            Self.logger.error("Failed to write response", metadata: ["error": "\(err)"])
+        }
+        channel.writeAndFlush(buffer, promise: p)
     }
 }
