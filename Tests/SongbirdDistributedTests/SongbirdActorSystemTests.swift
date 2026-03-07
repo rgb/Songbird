@@ -14,6 +14,27 @@ distributed actor Greeter {
     distributed func add(a: Int, b: Int) -> Int {
         a + b
     }
+
+    distributed func ping() {
+        // void-returning: exercises remoteCallVoid
+    }
+
+    distributed func failIfEmpty(name: String) throws -> String {
+        guard !name.isEmpty else {
+            throw GreeterError.nameIsEmpty
+        }
+        return "Hello, \(name)!"
+    }
+}
+
+enum GreeterError: Error, CustomStringConvertible {
+    case nameIsEmpty
+
+    var description: String {
+        switch self {
+        case .nameIsEmpty: "Name must not be empty"
+        }
+    }
 }
 
 @Suite("SongbirdActorSystem")
@@ -135,5 +156,72 @@ struct SongbirdActorSystemTests {
         system.resignID(id)
         let afterResign = try system.resolve(id: id, as: Greeter.self)
         #expect(afterResign == nil)
+    }
+
+    @Test func voidReturningRemoteCallWorks() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let workerSystem = SongbirdActorSystem(processName: "worker")
+        try await workerSystem.startServer(socketPath: socketPath)
+
+        let greeter = Greeter(actorSystem: workerSystem)
+
+        let clientSystem = SongbirdActorSystem(processName: "gateway")
+        try await clientSystem.connect(processName: "worker", socketPath: socketPath)
+
+        do {
+            let remote = try Greeter.resolve(
+                id: SongbirdActorID(processName: "worker", actorName: greeter.id.actorName),
+                using: clientSystem
+            )
+            // This exercises remoteCallVoid end-to-end
+            try await remote.ping()
+        } catch {
+            try? await clientSystem.shutdown()
+            try? await workerSystem.shutdown()
+            throw error
+        }
+
+        try await clientSystem.shutdown()
+        try await workerSystem.shutdown()
+    }
+
+    @Test func throwingRemoteCallReturnsError() async throws {
+        let socketPath = "/tmp/songbird-test-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let workerSystem = SongbirdActorSystem(processName: "worker")
+        try await workerSystem.startServer(socketPath: socketPath)
+
+        let greeter = Greeter(actorSystem: workerSystem)
+
+        let clientSystem = SongbirdActorSystem(processName: "gateway")
+        try await clientSystem.connect(processName: "worker", socketPath: socketPath)
+
+        do {
+            let remote = try Greeter.resolve(
+                id: SongbirdActorID(processName: "worker", actorName: greeter.id.actorName),
+                using: clientSystem
+            )
+
+            // Calling with an empty name should trigger the error wire path
+            await #expect {
+                _ = try await remote.failIfEmpty(name: "")
+            } throws: { error in
+                guard let distributed = error as? SongbirdDistributedError,
+                      case .remoteCallFailed(let message) = distributed else {
+                    return false
+                }
+                return message.contains("Name must not be empty")
+            }
+        } catch {
+            try? await clientSystem.shutdown()
+            try? await workerSystem.shutdown()
+            throw error
+        }
+
+        try await clientSystem.shutdown()
+        try await workerSystem.shutdown()
     }
 }
