@@ -85,10 +85,16 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
     }
 
     /// Stops the server and disconnects all clients.
+    ///
+    /// All resources are cleaned up regardless of individual failures. If any
+    /// step throws, the first error is re-thrown after all cleanup completes.
     public func shutdown() async throws {
-        if let server = serverBox.withLock({ $0 }) {
-            try await server.stop()
-            serverBox.withLock { $0 = nil }
+        var firstError: (any Error)?
+        if let server = serverBox.withLock({ val -> TransportServer? in
+            let s = val; val = nil; return s
+        }) {
+            do { try await server.stop() }
+            catch { firstError = error }
         }
         let allClients = clients.withLock { dict -> [TransportClient] in
             let values = Array(dict.values)
@@ -96,8 +102,10 @@ public final class SongbirdActorSystem: DistributedActorSystem, @unchecked Senda
             return values
         }
         for client in allClients {
-            try await client.disconnect()
+            do { try await client.disconnect() }
+            catch { if firstError == nil { firstError = error } }
         }
+        if let firstError { throw firstError }
     }
 
     // MARK: - DistributedActorSystem Protocol

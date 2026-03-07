@@ -73,6 +73,7 @@ public actor TransportClient {
 
     /// Connects to a Unix domain socket server.
     public func connect(socketPath: String) async throws {
+        precondition(channel == nil, "TransportClient.connect() called while already connected. Call disconnect() first.")
         let clientHandler = ClientInboundHandler(client: self)
         let bootstrap = ClientBootstrap(group: group)
             .channelInitializer { channel in
