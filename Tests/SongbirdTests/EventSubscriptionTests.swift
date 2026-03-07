@@ -432,6 +432,53 @@ struct EventSubscriptionTests {
         #expect(categories == ["order", "invoice"])
     }
 
+    @Test func cancellationFlushesLastDeliveredPosition() async throws {
+        let (eventStore, positionStore) = makeStores()
+
+        // Append 5 events (global positions 0..4)
+        try await appendEvents(to: eventStore, category: category, count: 5)
+
+        let subscription = EventSubscription(
+            subscriberId: "flush-test",
+            categories: [category],
+            store: eventStore,
+            positionStore: positionStore,
+            batchSize: 100,
+            tickInterval: .milliseconds(10)
+        )
+
+        let collector = EventCollector()
+        let task = Task {
+            for try await event in subscription {
+                await collector.append(event)
+                // Don't break -- let it poll after consuming all events
+            }
+        }
+
+        // Wait for all 5 events to be consumed, then the subscription enters the poll loop
+        while await collector.count < 5 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        // Cancel while the subscription is polling for more events.
+        // The batch-exhaustion path and/or cancellation flush should persist the position.
+        task.cancel()
+
+        // Wait for the task to finish
+        let result = await task.result
+        switch result {
+        case .success:
+            break
+        case .failure(let error):
+            #expect(error is CancellationError)
+        }
+
+        // Verify position was flushed
+        let savedPosition = try await positionStore.load(subscriberId: "flush-test")
+        #expect(savedPosition != nil, "Position should be saved on cancellation")
+        #expect(savedPosition == 4, "Position should reflect the last delivered event")
+    }
+
     // MARK: - All-Events Subscription
 
     @Test func subscribesToAllEventsWithEmptyCategories() async throws {
