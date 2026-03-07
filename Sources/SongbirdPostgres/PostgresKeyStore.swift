@@ -27,10 +27,11 @@ public struct PostgresKeyStore: KeyStore, Sendable {
         // If another caller inserted between our SELECT and INSERT,
         // this is a no-op and we fall through to re-read.
         if let expiresAfter {
-            let expiresSeconds = Int64(expiresAfter.components.seconds)
+            let (seconds, attoseconds) = expiresAfter.components
+            let totalSeconds = Double(seconds) + Double(attoseconds) / 1e18
             try await client.query("""
                 INSERT INTO encryption_keys (reference, layer, key_data, created_at, expires_at)
-                VALUES (\(reference), \(layerStr), \(keyBytes), NOW(), NOW() + make_interval(secs => \(expiresSeconds)))
+                VALUES (\(reference), \(layerStr), \(keyBytes), NOW(), NOW() + make_interval(secs => \(totalSeconds)))
                 ON CONFLICT (reference, layer) DO NOTHING
                 """)
         } else {
