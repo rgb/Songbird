@@ -41,6 +41,7 @@ public struct StreamSubscription: AsyncSequence, Sendable {
         batchSize: Int = SubscriptionDefaults.batchSize,
         tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
+        precondition(batchSize > 0, "batchSize must be positive")
         self.stream = stream
         self.store = store
         self.startPosition = startPosition

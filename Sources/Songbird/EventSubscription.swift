@@ -63,6 +63,7 @@ public struct EventSubscription: AsyncSequence, Sendable {
         batchSize: Int = SubscriptionDefaults.batchSize,
         tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
+        precondition(batchSize > 0, "batchSize must be positive")
         self.subscriberId = subscriberId
         self.categories = categories
         self.store = store

@@ -43,6 +43,7 @@ public struct ProcessStateStream<PM: ProcessManager>: AsyncSequence, Sendable {
         batchSize: Int = SubscriptionDefaults.batchSize,
         tickInterval: Duration = SubscriptionDefaults.tickInterval
     ) {
+        precondition(batchSize > 0, "batchSize must be positive")
         self.instanceId = instanceId
         self.store = store
         self.batchSize = batchSize

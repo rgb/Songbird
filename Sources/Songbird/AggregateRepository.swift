@@ -12,6 +12,7 @@ public struct AggregateRepository<A: Aggregate>: Sendable {
         snapshotPolicy: SnapshotPolicy = .none,
         batchSize: Int = 1000
     ) {
+        precondition(batchSize > 0, "batchSize must be positive")
         self.store = store
         self.registry = registry
         self.snapshotStore = snapshotStore

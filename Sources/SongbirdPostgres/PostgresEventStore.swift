@@ -162,6 +162,7 @@ public struct PostgresEventStore: EventStore, Sendable {
         from position: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
+        precondition(maxCount > 0, "maxCount must be positive")
         let streamStr = stream.description
         let rows = try await client.query("""
             SELECT global_position, stream_name, stream_category, position, event_type, data::text, metadata::text, event_id, timestamp
@@ -191,6 +192,7 @@ public struct PostgresEventStore: EventStore, Sendable {
         from globalPosition: Int64,
         maxCount: Int
     ) async throws -> [RecordedEvent] {
+        precondition(maxCount > 0, "maxCount must be positive")
         let adjustedPosition = globalPosition + 1  // Convert 0-based to 1-based BIGSERIAL
 
         let rows: PostgresRowSequence
