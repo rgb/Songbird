@@ -248,15 +248,16 @@ public actor SQLiteEventStore: EventStore {
     public func verifyChain(batchSize: Int = 1000) async throws -> ChainVerificationResult {
         var previousHash = "genesis"
         var verified = 0
-        var offset = 0
+        var lastGlobalPosition: Int64 = 0  // AUTOINCREMENT starts at 1, so 0 means "before first"
 
         while true {
             let rows = try db.prepare("""
                 SELECT global_position, event_type, stream_name, data, timestamp, event_hash
                 FROM events
+                WHERE global_position > ?
                 ORDER BY global_position ASC
-                LIMIT ? OFFSET ?
-            """, batchSize, offset)
+                LIMIT ?
+            """, lastGlobalPosition, batchSize)
 
             var batchCount = 0
             for row in rows {
@@ -270,6 +271,7 @@ public actor SQLiteEventStore: EventStore {
                     throw SQLiteEventStoreError.corruptedRow(column: "chain_verification", globalPosition: nil)
                 }
                 let storedHash = row[5] as? String
+                lastGlobalPosition = globalPos
 
                 let hashInput = "\(previousHash)\0\(eventType)\0\(streamName)\0\(data)\0\(timestamp)"
                 let computedHash = SHA256.hash(data: Data(hashInput.utf8))
@@ -289,7 +291,6 @@ public actor SQLiteEventStore: EventStore {
             }
 
             if batchCount < batchSize { break }
-            offset += batchSize
 
             // Yield between batches to avoid monopolizing the executor during
             // long chain verifications.
