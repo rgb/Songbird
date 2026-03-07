@@ -173,6 +173,21 @@ struct ProcessManagerRunnerTests {
         (InMemoryEventStore(), InMemoryPositionStore())
     }
 
+    /// Polls a condition until it returns true, with a timeout safety net.
+    private func waitUntil(
+        timeout: Duration = .seconds(5),
+        _ condition: () async -> Bool
+    ) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while !(await condition()) {
+            guard ContinuousClock.now < deadline else {
+                Issue.record("Timed out waiting for condition")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
     // MARK: - Event Processing
 
     @Test func processesEventAndEmitsReactionEvent() async throws {
@@ -195,13 +210,14 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        // Wait for the runner to process the event
-        try await Task.sleep(for: .milliseconds(100))
-
-        // Check that a reaction event was appended
+        // Wait for the runner to process the event and emit a reaction
         let outputStream = StreamName(category: "runnerFulfillment", id: "order-1")
-        let outputEvents = try await store.readStream(outputStream, from: 0, maxCount: 100)
+        try await waitUntil {
+            let events = try? await store.readStream(outputStream, from: 0, maxCount: 100)
+            return (events?.count ?? 0) >= 1
+        }
 
+        let outputEvents = try await store.readStream(outputStream, from: 0, maxCount: 100)
         #expect(outputEvents.count == 1)
         #expect(outputEvents[0].eventType == "RunnerPaymentRequested")
 
@@ -240,8 +256,12 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        // Wait for processing
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for both entities to be processed
+        try await waitUntil {
+            let a = await runner.state(for: "order-A")
+            let b = await runner.state(for: "order-B")
+            return a != RunnerFulfillmentPM.initialState && b != RunnerFulfillmentPM.initialState
+        }
 
         // Check per-entity state
         let stateA = await runner.state(for: "order-A")
@@ -298,7 +318,11 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for step 1 to be processed
+        try await waitUntil {
+            let s = await runner.state(for: "order-1")
+            return s.total == 150
+        }
 
         // Step 2: Charge payment
         _ = try await store.append(
@@ -308,7 +332,11 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for step 2 to be processed
+        try await waitUntil {
+            let s = await runner.state(for: "order-1")
+            return s.paid
+        }
 
         // State should reflect both steps
         let state = await runner.state(for: "order-1")
@@ -348,7 +376,19 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        try await Task.sleep(for: .milliseconds(100))
+        // Append a canary event that WILL be processed — once it's done,
+        // the unknown event above was definitely already encountered and skipped.
+        _ = try await store.append(
+            RunnerOrderEvent.placed(orderId: "canary", total: 1),
+            to: StreamName(category: "runnerOrder", id: "canary"),
+            metadata: EventMetadata(),
+            expectedVersion: nil
+        )
+
+        try await waitUntil {
+            let s = await runner.state(for: "canary")
+            return s != RunnerFulfillmentPM.initialState
+        }
 
         // No state should be cached for "x" (no reaction matched)
         let state = await runner.state(for: "x")
@@ -406,8 +446,11 @@ struct ProcessManagerRunnerTests {
             )
         }
 
-        // Wait for the runner to process all events
-        try await Task.sleep(for: .milliseconds(200))
+        // Wait for the runner to process all 3 events
+        try await waitUntil {
+            let s = await runner.state(for: "order-3")
+            return s != RunnerFulfillmentPM.initialState
+        }
 
         // With maxCacheSize: 2, at least one of the first two entities should have
         // been evicted (returning initialState). The third entity is always cached
@@ -457,8 +500,12 @@ struct ProcessManagerRunnerTests {
             expectedVersion: nil
         )
 
-        // Wait for runner to process both events
-        try await Task.sleep(for: .milliseconds(200))
+        // Wait for runner to process both events (state updates even on append failure)
+        try await waitUntil {
+            let s1 = await runner.state(for: "order-1")
+            let s2 = await runner.state(for: "order-2")
+            return s1 != RunnerFulfillmentPM.initialState && s2 != RunnerFulfillmentPM.initialState
+        }
 
         // The runner should still be alive (not crashed).
         // State is updated BEFORE the append call in processEvent, so even though
