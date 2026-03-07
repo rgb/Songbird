@@ -7,7 +7,7 @@ public actor SQLitePositionStore: PositionStore {
     /// The underlying SQLite connection. Marked `nonisolated(unsafe)` because all access
     /// is serialized through this actor's custom `DispatchSerialQueue` executor, ensuring
     /// that only one thread accesses the connection at a time.
-    nonisolated(unsafe) let db: Connection
+    private nonisolated(unsafe) let db: Connection
     private let executor: DispatchSerialQueue
 
 
