@@ -5,7 +5,6 @@ import Songbird
 import SongbirdHummingbird
 import SongbirdSQLite
 import SongbirdSmew
-import SongbirdTesting
 import WarblerCatalog
 
 @main
@@ -13,9 +12,9 @@ struct WarblerCatalogService {
     static func main() async throws {
         // MARK: - Configuration
 
-        let sqlitePath = "data/songbird.sqlite"
-        let duckdbPath = "data/catalog.duckdb"
-        let port = 8082
+        let sqlitePath = ProcessInfo.processInfo.environment["SQLITE_PATH"] ?? "data/songbird.sqlite"
+        let duckdbPath = ProcessInfo.processInfo.environment["DUCKDB_PATH"] ?? "data/catalog.duckdb"
+        let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8082") ?? 8082
 
         // MARK: - Event Type Registry
 
@@ -35,7 +34,7 @@ struct WarblerCatalogService {
         // MARK: - Stores
 
         let eventStore = try SQLiteEventStore(path: sqlitePath)
-        let positionStore = InMemoryPositionStore()
+        let positionStore = try SQLitePositionStore(path: sqlitePath)
         let readModel = try ReadModelStore(path: duckdbPath)
 
         // MARK: - Projectors

@@ -5,7 +5,6 @@ import Songbird
 import SongbirdHummingbird
 import SongbirdSQLite
 import SongbirdSmew
-import SongbirdTesting
 import WarblerAnalytics
 
 @main
@@ -13,9 +12,9 @@ struct WarblerAnalyticsService {
     static func main() async throws {
         // MARK: - Configuration
 
-        let sqlitePath = "data/songbird.sqlite"
-        let duckdbPath = "data/analytics.duckdb"
-        let port = 8084
+        let sqlitePath = ProcessInfo.processInfo.environment["SQLITE_PATH"] ?? "data/songbird.sqlite"
+        let duckdbPath = ProcessInfo.processInfo.environment["DUCKDB_PATH"] ?? "data/analytics.duckdb"
+        let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8084") ?? 8084
 
         // MARK: - Event Type Registry
 
@@ -26,8 +25,7 @@ struct WarblerAnalyticsService {
         // MARK: - Stores
 
         let eventStore = try SQLiteEventStore(path: sqlitePath)
-        let positionStore = InMemoryPositionStore()
-        let snapshotStore = InMemorySnapshotStore()
+        let positionStore = try SQLitePositionStore(path: sqlitePath)
         let readModel = try ReadModelStore(path: duckdbPath)
 
         // MARK: - Projectors
@@ -35,16 +33,6 @@ struct WarblerAnalyticsService {
         let playbackProjector = PlaybackAnalyticsProjector(readModel: readModel)
         await playbackProjector.registerMigration()
         try await readModel.migrate()
-
-        // MARK: - Repositories
-
-        let _viewCountRepo = AggregateRepository<ViewCountAggregate>(
-            store: eventStore,
-            registry: registry,
-            snapshotStore: snapshotStore,
-            snapshotPolicy: .everyNEvents(100)
-        )
-        _ = _viewCountRepo // Reserved for future view-count routes
 
         // MARK: - Injector
 

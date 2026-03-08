@@ -23,7 +23,6 @@ let package = Package(
                 .product(name: "SongbirdSQLite", package: "Songbird"),
                 .product(name: "SongbirdSmew", package: "Songbird"),
                 .product(name: "SongbirdHummingbird", package: "Songbird"),
-                .product(name: "SongbirdTesting", package: "Songbird"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
@@ -38,7 +37,6 @@ let package = Package(
                 .product(name: "SongbirdSQLite", package: "Songbird"),
                 .product(name: "SongbirdSmew", package: "Songbird"),
                 .product(name: "SongbirdHummingbird", package: "Songbird"),
-                .product(name: "SongbirdTesting", package: "Songbird"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
@@ -53,7 +51,6 @@ let package = Package(
                 .product(name: "SongbirdSQLite", package: "Songbird"),
                 .product(name: "SongbirdSmew", package: "Songbird"),
                 .product(name: "SongbirdHummingbird", package: "Songbird"),
-                .product(name: "SongbirdTesting", package: "Songbird"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
@@ -68,7 +65,6 @@ let package = Package(
                 .product(name: "SongbirdSQLite", package: "Songbird"),
                 .product(name: "SongbirdSmew", package: "Songbird"),
                 .product(name: "SongbirdHummingbird", package: "Songbird"),
-                .product(name: "SongbirdTesting", package: "Songbird"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),

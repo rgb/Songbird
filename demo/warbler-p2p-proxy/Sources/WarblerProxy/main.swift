@@ -40,7 +40,12 @@ struct WarblerProxy {
     }
 
     static func healthCheck() async throws -> Response {
-        var services: [(String, String)] = []
+        struct HealthResponse: Codable, Sendable {
+            let status: String
+            let services: [String: String]
+        }
+
+        var serviceStatuses: [String: String] = [:]
         var allHealthy = true
 
         for backend in backends {
@@ -48,26 +53,25 @@ struct WarblerProxy {
             var request = HTTPClientRequest(url: url)
             request.method = .GET
 
-            let status: String
             do {
                 let response = try await HTTPClient.shared.execute(request, timeout: .seconds(5))
                 _ = try? await response.body.collect(upTo: 1024)
-                status = "up"
+                serviceStatuses[backend.name] = "up"
             } catch {
-                status = "down"
+                serviceStatuses[backend.name] = "down"
                 allHealthy = false
             }
-            services.append((backend.name, status))
         }
 
-        var json = #"{"status":"\#(allHealthy ? "healthy" : "degraded")","services":{"#
-        json += services.map { #""\#($0.0)":"\#($0.1)""# }.joined(separator: ",")
-        json += "}}"
-
+        let healthResponse = HealthResponse(
+            status: allHealthy ? "healthy" : "degraded",
+            services: serviceStatuses
+        )
+        let data = try JSONEncoder().encode(healthResponse)
         return Response(
             status: allHealthy ? .ok : .serviceUnavailable,
             headers: [.contentType: "application/json"],
-            body: .init(byteBuffer: ByteBuffer(string: json))
+            body: .init(byteBuffer: ByteBuffer(data: data))
         )
     }
 }
