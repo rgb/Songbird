@@ -76,6 +76,65 @@ struct SubscriptionProjectorTests {
         #expect(sub?.status == "cancelled")
     }
 
+    @Test func ignoresPaymentConfirmed() async throws {
+        var (readModel, _, harness) = try await makeProjector()
+
+        try await harness.given(
+            SubscriptionEvent.requested(subscriptionId: "sub-1", userId: "user-1", plan: "pro"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        try await harness.given(
+            SubscriptionEvent.paymentConfirmed(subscriptionId: "sub-1"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+
+        // paymentConfirmed should not change the subscription row
+        let sub: SubRow? = try await readModel.queryFirst(SubRow.self) {
+            "SELECT id, user_id, plan, status FROM subscriptions WHERE id = \(param: "sub-1")"
+        }
+        #expect(sub?.status == "pending")
+    }
+
+    @Test func ignoresPaymentFailed() async throws {
+        var (readModel, _, harness) = try await makeProjector()
+
+        try await harness.given(
+            SubscriptionEvent.requested(subscriptionId: "sub-1", userId: "user-1", plan: "pro"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        try await harness.given(
+            SubscriptionEvent.paymentFailed(subscriptionId: "sub-1", reason: "Declined"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+
+        let sub: SubRow? = try await readModel.queryFirst(SubRow.self) {
+            "SELECT id, user_id, plan, status FROM subscriptions WHERE id = \(param: "sub-1")"
+        }
+        #expect(sub?.status == "pending")
+    }
+
+    @Test func ignoresLifecycleEventsWithoutStreamId() async throws {
+        let (readModel, projector, _) = try await makeProjector()
+
+        // Create a RecordedEvent with no stream ID (category-only stream)
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "subscriptionLifecycle"),
+            position: 0,
+            globalPosition: 0,
+            eventType: LifecycleEventTypes.accessGranted,
+            data: try JSONEncoder().encode(SubscriptionLifecycleEvent.accessGranted(userId: "user-1")),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        try await projector.apply(recorded)
+
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM subscriptions").scalarInt64()
+        }
+        #expect(count == 0)
+    }
+
     @Test func ignoresUnknownEventType() async throws {
         let (readModel, projector, _) = try await makeProjector()
 

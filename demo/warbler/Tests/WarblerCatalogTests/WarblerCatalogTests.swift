@@ -73,6 +73,16 @@ struct VideoAggregateTests {
         )
         #expect(events == [.metadataUpdated(title: "New Title", description: "New Desc")])
         #expect(harness.state.title == "New Title")
+        #expect(harness.state.status == .transcoding)
+    }
+
+    @Test func unpublishVideoWhileTranscoding() throws {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        harness.given(.published(title: "T", description: "D", creatorId: "c"))
+        // State is .transcoding (published triggers transcoding state)
+        let events = try harness.when(UnpublishVideo(), using: UnpublishVideoHandler.self)
+        #expect(events == [.unpublished])
+        #expect(harness.state.status == .unpublished)
     }
 
     @Test func unpublishVideo() throws {
@@ -143,11 +153,18 @@ struct VideoAggregateTests {
             PublishVideo(title: "T", description: "D", creatorId: "c"),
             using: PublishVideoHandler.self
         )
+        #expect(harness.state.status == .transcoding)
+
         try harness.when(CompleteTranscoding(), using: CompleteTranscodingHandler.self)
+        #expect(harness.state.status == .published)
+
         try harness.when(
             UpdateVideoMetadata(title: "Updated", description: "Better"),
             using: UpdateVideoMetadataHandler.self
         )
+        #expect(harness.state.status == .published)
+        #expect(harness.state.title == "Updated")
+
         try harness.when(UnpublishVideo(), using: UnpublishVideoHandler.self)
         #expect(harness.state.status == .unpublished)
         #expect(harness.appliedEvents.count == 4)

@@ -32,4 +32,9 @@ public actor PlaybackInjector: Injector {
     public nonisolated func inject(_ event: InboundEvent) {
         continuation.yield(event)
     }
+
+    /// Signals that no more events will be injected, terminating the event stream.
+    public nonisolated func finish() {
+        continuation.finish()
+    }
 }

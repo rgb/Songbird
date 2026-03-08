@@ -47,6 +47,24 @@ struct PlaybackInjectorTests {
         #expect(count == 2)
     }
 
+    @Test func endToEndInjectionViaHarness() async throws {
+        let injector = PlaybackInjector()
+        let harness = TestInjectorHarness(injector: injector)
+
+        let viewEvent = AnalyticsEvent.videoViewed(videoId: "v-1", userId: "u-1", watchedSeconds: 60)
+        let inbound = InboundEvent(
+            event: viewEvent,
+            stream: StreamName(category: "analytics", id: "v-1"),
+            metadata: EventMetadata(traceId: "test")
+        )
+        injector.inject(inbound)
+        injector.finish()
+
+        let recorded = try await harness.run()
+        #expect(recorded.count == 1)
+        #expect(recorded[0].streamName == StreamName(category: "analytics", id: "v-1"))
+    }
+
     @Test func doesNotCountFailedAppends() async throws {
         let injector = PlaybackInjector()
 

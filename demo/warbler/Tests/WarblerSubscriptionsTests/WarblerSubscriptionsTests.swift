@@ -35,7 +35,7 @@ struct SubscriptionProcessTests {
         let state = harness.state(for: "sub-1")
         #expect(state.status == .active)
         #expect(harness.output.count == 1)
-        let output = harness.output[0] as? SubscriptionLifecycleEvent
+        let output = try #require(harness.output[0] as? SubscriptionLifecycleEvent)
         #expect(output == .accessGranted(userId: "user-1"))
     }
 
@@ -53,8 +53,32 @@ struct SubscriptionProcessTests {
         let state = harness.state(for: "sub-1")
         #expect(state.status == .cancelled)
         #expect(harness.output.count == 1)
-        let output = harness.output[0] as? SubscriptionLifecycleEvent
+        let output = try #require(harness.output[0] as? SubscriptionLifecycleEvent)
         #expect(output == .subscriptionCancelled(userId: "user-1", reason: "Insufficient funds"))
+    }
+
+    @Test func paymentConfirmedBeforeRequestIsIgnored() throws {
+        var harness = TestProcessManagerHarness<SubscriptionLifecycleProcess>()
+        try harness.given(
+            SubscriptionEvent.paymentConfirmed(subscriptionId: "sub-1"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+
+        let state = harness.state(for: "sub-1")
+        #expect(state.status == .initial)
+        #expect(harness.output.isEmpty)
+    }
+
+    @Test func paymentFailedBeforeRequestIsIgnored() throws {
+        var harness = TestProcessManagerHarness<SubscriptionLifecycleProcess>()
+        try harness.given(
+            SubscriptionEvent.paymentFailed(subscriptionId: "sub-1", reason: "Declined"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+
+        let state = harness.state(for: "sub-1")
+        #expect(state.status == .initial)
+        #expect(harness.output.isEmpty)
     }
 
     @Test func isolatesPerEntityState() throws {

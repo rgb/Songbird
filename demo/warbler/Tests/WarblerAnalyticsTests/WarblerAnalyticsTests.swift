@@ -72,10 +72,10 @@ struct PlaybackAnalyticsProjectorTests {
         )
 
         // Verify recorded_at column exists and has a non-null value
-        let hasTimestamp = try await readModel.withConnection { conn in
-            try conn.query("SELECT recorded_at FROM video_views WHERE recorded_at IS NOT NULL LIMIT 1").scalarInt64()
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM video_views WHERE recorded_at IS NOT NULL").scalarInt64()
         }
-        #expect(hasTimestamp != nil)
+        #expect(count == 1)
     }
 
     @Test func tableIsRegisteredForTiering() async throws {
