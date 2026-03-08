@@ -1,18 +1,31 @@
 import Foundation
 import Hummingbird
+import Logging
 import NIOCore
 import Songbird
 import SongbirdHummingbird
+import SongbirdSQLite
 import SongbirdSmew
-import SongbirdTesting
 import WarblerAnalytics
 import WarblerCatalog
 import WarblerIdentity
 import WarblerSubscriptions
 
+private func jsonResponse(_ value: some Encodable, status: HTTPResponse.Status = .ok) throws -> Response {
+    let data = try JSONEncoder().encode(value)
+    return Response(
+        status: status,
+        headers: [.contentType: "application/json"],
+        body: .init(byteBuffer: ByteBuffer(data: data))
+    )
+}
+
 @main
 struct WarblerApp {
     static func main() async throws {
+        let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
+        let logger = Logger(label: "warbler")
+
         // MARK: - Event Type Registry
 
         let registry = EventTypeRegistry()
@@ -39,11 +52,10 @@ struct WarblerApp {
         registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
         registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
 
-        // MARK: - Event Store (in-memory for demo; swap to SQLiteEventStore for persistence)
+        // MARK: - Event Store (in-memory SQLite for demo; use a file path for persistence)
 
-        let eventStore = InMemoryEventStore()
-        let positionStore = InMemoryPositionStore()
-        let snapshotStore = InMemorySnapshotStore()
+        let eventStore = try SQLiteEventStore(path: ":memory:")
+        let positionStore = try SQLitePositionStore(path: ":memory:")
 
         // MARK: - Read Model Store
 
@@ -69,13 +81,6 @@ struct WarblerApp {
 
         let userRepo = AggregateRepository<UserAggregate>(store: eventStore, registry: registry)
         let videoRepo = AggregateRepository<VideoAggregate>(store: eventStore, registry: registry)
-        let _viewCountRepo = AggregateRepository<ViewCountAggregate>(
-            store: eventStore,
-            registry: registry,
-            snapshotStore: snapshotStore,
-            snapshotPolicy: .everyNEvents(100)
-        )
-        _ = _viewCountRepo // Reserved for future view-count routes
 
         // MARK: - Gateway & Injector
 
@@ -132,12 +137,7 @@ struct WarblerApp {
                 "SELECT id, email, display_name, is_active FROM users WHERE id = \(param: id)"
             }
             guard let user else { return Response(status: .notFound) }
-            let data = try JSONEncoder().encode(user)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(user)
         }
 
         router.patch("/users/{id}") { request, context -> Response in
@@ -190,12 +190,7 @@ struct WarblerApp {
             let videos: [VideoRow] = try await readModel.query(VideoRow.self) {
                 "SELECT id, title, description, creator_id, status FROM videos ORDER BY title"
             }
-            let data = try JSONEncoder().encode(videos)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(videos)
         }
 
         router.get("/videos/{id}") { _, context -> Response in
@@ -205,12 +200,7 @@ struct WarblerApp {
                 "SELECT id, title, description, creator_id, status FROM videos WHERE id = \(param: id)"
             }
             guard let video else { return Response(status: .notFound) }
-            let data = try JSONEncoder().encode(video)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(video)
         }
 
         router.patch("/videos/{id}") { request, context -> Response in
@@ -275,12 +265,7 @@ struct WarblerApp {
             let subs: [SubRow] = try await readModel.query(SubRow.self) {
                 "SELECT id, user_id, plan, status FROM subscriptions WHERE user_id = \(param: userId)"
             }
-            let data = try JSONEncoder().encode(subs)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(subs)
         }
 
         router.post("/subscriptions/{id}/pay") { _, context -> Response in
@@ -315,12 +300,7 @@ struct WarblerApp {
             let result: CountRow? = try await readModel.queryFirst(CountRow.self) {
                 "SELECT COUNT(*) AS view_count, COALESCE(SUM(watched_seconds), 0) AS total_seconds FROM video_views WHERE video_id = \(param: id)"
             }
-            let data = try JSONEncoder().encode(result)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(result)
         }
 
         router.get("/analytics/top-videos") { _, _ -> Response in
@@ -328,22 +308,17 @@ struct WarblerApp {
             let top: [TopVideo] = try await readModel.query(TopVideo.self) {
                 "SELECT video_id, COUNT(*) AS view_count, SUM(watched_seconds) AS total_seconds FROM video_views GROUP BY video_id ORDER BY view_count DESC LIMIT 10"
             }
-            let data = try JSONEncoder().encode(top)
-            return Response(
-                status: .ok,
-                headers: [.contentType: "application/json"],
-                body: .init(byteBuffer: ByteBuffer(data: data))
-            )
+            return try jsonResponse(top)
         }
 
         // MARK: - Start
 
         let app = Application(
             router: router,
-            configuration: .init(address: .hostname("localhost", port: 8080))
+            configuration: .init(address: .hostname("localhost", port: port))
         )
 
-        print("Warbler starting on http://localhost:8080")
+        logger.info("Warbler starting on http://localhost:\(port)")
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { try await services.run() }
