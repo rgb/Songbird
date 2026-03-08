@@ -8,6 +8,8 @@ import NIOHTTP1
 
 @main
 struct WarblerProxy {
+    // Backend ports are configured to match the P2P service defaults (8081-8084).
+    // Override via individual service PORT env vars if needed.
     static let backends: [(prefix: String, port: Int, name: String)] = [
         ("/users", 8081, "identity"),
         ("/videos", 8082, "catalog"),
@@ -18,6 +20,8 @@ struct WarblerProxy {
     static func main() async throws {
         let logger = Logger(label: "warbler.proxy")
         let httpClient = HTTPClient()
+        let bindHost = ProcessInfo.processInfo.environment["BIND_HOST"] ?? "localhost"
+        let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
         let router = Router()
 
         // Health check route
@@ -26,19 +30,24 @@ struct WarblerProxy {
         }
 
         // Proxy middleware handles all other requests
-        router.addMiddleware { ProxyMiddleware(backends: backends, httpClient: httpClient) }
+        router.addMiddleware { ProxyMiddleware(backends: backends, httpClient: httpClient, logger: logger) }
 
         let app = Application(
             router: router,
-            configuration: .init(address: .hostname("localhost", port: 8080))
+            configuration: .init(address: .hostname(bindHost, port: port))
         )
 
-        logger.info("WarblerProxy starting on http://localhost:8080")
+        logger.info("WarblerProxy starting on http://\(bindHost):\(port)")
         logger.info("Routing:")
         for b in backends {
             logger.info("  \(b.prefix)/* -> localhost:\(b.port) (\(b.name))")
         }
-        try await app.runService()
+        do {
+            try await app.runService()
+        } catch {
+            try? await httpClient.shutdown()
+            throw error
+        }
         try await httpClient.shutdown()
     }
 
@@ -52,7 +61,8 @@ struct WarblerProxy {
         var allHealthy = true
 
         for backend in backends {
-            let url = "http://localhost:\(backend.port)/"
+            // Probe a known route for each backend service
+            let url = "http://localhost:\(backend.port)\(backend.prefix)"
             var request = HTTPClientRequest(url: url)
             request.method = .GET
 
@@ -82,6 +92,7 @@ struct WarblerProxy {
 struct ProxyMiddleware: RouterMiddleware {
     let backends: [(prefix: String, port: Int, name: String)]
     let httpClient: HTTPClient
+    let logger: Logger
 
     func handle(
         _ request: Request,
@@ -99,7 +110,7 @@ struct ProxyMiddleware: RouterMiddleware {
         let response = await forward(request: request, path: path, backend: backend)
         let elapsed = ContinuousClock.now - start
 
-        print("\(request.method) \(path) → :\(backend.port) (\(backend.name)) → \(response.status.code) [\(elapsed)]")
+        logger.info("\(request.method) \(path) → :\(backend.port) (\(backend.name)) → \(response.status.code) [\(elapsed)]")
 
         return response
     }
