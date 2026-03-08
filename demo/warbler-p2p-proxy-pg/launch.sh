@@ -58,7 +58,9 @@ swift run WarblerAnalyticsService &
 PIDS+=($!)
 
 # Wait for services to start
-sleep 2
+for p in 8081 8082 8083 8084; do
+    until nc -z localhost $p 2>/dev/null; do sleep 0.2; done
+done
 
 # Start proxy (from warbler-p2p-proxy)
 echo "Starting proxy..."

@@ -21,6 +21,8 @@ public enum PublishVideoHandler: CommandHandler {
         _ command: PublishVideo,
         given state: VideoAggregate.State
     ) throws(VideoAggregate.Failure) -> [VideoEvent] {
+        guard !command.title.isEmpty else { throw .invalidInput("title cannot be empty") }
+        guard !command.description.isEmpty else { throw .invalidInput("description cannot be empty") }
         guard state.status == .initial else { throw .alreadyPublished }
         return [.published(title: command.title, description: command.description, creatorId: command.creatorId)]
     }

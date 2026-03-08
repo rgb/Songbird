@@ -19,6 +19,7 @@ public enum RegisterUserHandler: CommandHandler {
         _ command: RegisterUser,
         given state: UserAggregate.State
     ) throws(UserAggregate.Failure) -> [UserEvent] {
+        guard !command.email.isEmpty else { throw .invalidInput("email cannot be empty") }
         guard !state.isRegistered else { throw .alreadyRegistered }
         return [.registered(email: command.email, displayName: command.displayName)]
     }

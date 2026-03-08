@@ -18,6 +18,26 @@ struct VideoAggregateTests {
         #expect(harness.state.title == "Swift Tips")
     }
 
+    @Test func rejectPublishWithEmptyTitle() {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        #expect(throws: VideoAggregate.Failure.invalidInput("title cannot be empty")) {
+            try harness.when(
+                PublishVideo(title: "", description: "A description", creatorId: "creator-1"),
+                using: PublishVideoHandler.self
+            )
+        }
+    }
+
+    @Test func rejectPublishWithEmptyDescription() {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        #expect(throws: VideoAggregate.Failure.invalidInput("description cannot be empty")) {
+            try harness.when(
+                PublishVideo(title: "A Title", description: "", creatorId: "creator-1"),
+                using: PublishVideoHandler.self
+            )
+        }
+    }
+
     @Test func rejectDuplicatePublish() {
         var harness = TestAggregateHarness<VideoAggregate>()
         harness.given(.published(title: "T", description: "D", creatorId: "c"))

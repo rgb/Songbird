@@ -29,6 +29,7 @@ public enum VideoAggregate: Aggregate {
         case notPublished
         case notTranscoding
         case videoUnpublished
+        case invalidInput(String)
     }
 
     public static let category = "video"

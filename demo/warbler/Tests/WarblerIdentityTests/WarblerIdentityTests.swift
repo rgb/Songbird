@@ -19,6 +19,16 @@ struct UserAggregateTests {
         #expect(harness.state.isActive == true)
     }
 
+    @Test func rejectRegistrationWithEmptyEmail() {
+        var harness = TestAggregateHarness<UserAggregate>()
+        #expect(throws: UserAggregate.Failure.invalidInput("email cannot be empty")) {
+            try harness.when(
+                RegisterUser(email: "", displayName: "Alice"),
+                using: RegisterUserHandler.self
+            )
+        }
+    }
+
     @Test func rejectDuplicateRegistration() throws {
         var harness = TestAggregateHarness<UserAggregate>()
         harness.given(.registered(email: "alice@example.com", displayName: "Alice"))

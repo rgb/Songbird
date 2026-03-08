@@ -23,7 +23,7 @@ echo "  Postgres: ${POSTGRES_HOST:-localhost}:${POSTGRES_PORT:-5432}/${POSTGRES_
 echo "  Sockets: $SOCKET_DIR"
 
 # Build if needed
-swift build 2>/dev/null || true
+swift build || exit 1
 
 # Start workers
 PIDS=()
@@ -37,7 +37,9 @@ PIDS+=($!)
 PIDS+=($!)
 
 # Wait for sockets to be created
-sleep 1
+for sock in identity.sock catalog.sock subscriptions.sock analytics.sock; do
+    while [ ! -S "$SOCKET_DIR/$sock" ]; do sleep 0.1; done
+done
 
 # Start gateway
 .build/debug/WarblerGateway &

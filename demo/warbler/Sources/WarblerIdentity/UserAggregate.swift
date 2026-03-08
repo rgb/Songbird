@@ -21,6 +21,7 @@ public enum UserAggregate: Aggregate {
         case alreadyRegistered
         case notRegistered
         case userDeactivated
+        case invalidInput(String)
     }
 
     public static let category = "user"

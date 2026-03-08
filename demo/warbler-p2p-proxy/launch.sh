@@ -50,8 +50,10 @@ PIDS+=($!)
 swift run WarblerAnalyticsService &
 PIDS+=($!)
 
-# Give services a moment to start
-sleep 2
+# Wait for services to start
+for p in 8081 8082 8083 8084; do
+    until nc -z localhost $p 2>/dev/null; do sleep 0.2; done
+done
 
 # Start proxy
 echo "Starting proxy..."
