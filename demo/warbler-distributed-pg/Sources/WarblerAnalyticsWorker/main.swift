@@ -76,7 +76,7 @@ struct WarblerAnalyticsWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 3 else {
             print("Usage: WarblerAnalyticsWorker <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let duckdbPath = args[1]
         let socketPath = args[2]
@@ -93,69 +93,62 @@ struct WarblerAnalyticsWorkerApp {
         let client = PostgresClient(configuration: pgConfig)
         let logger = Logger(label: "warbler.analytics")
 
-        // Run migrations
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
             group.addTask {
+                // Run migrations first
                 try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+
+                let registry = EventTypeRegistry()
+                registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
+                registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
+
+                // Stores (Postgres-backed)
+                let eventStore = PostgresEventStore(client: client)
+                let positionStore = PostgresPositionStore(client: client)
+
+                // Read model (per-worker DuckDB)
+                let readModel = try ReadModelStore(path: duckdbPath)
+
+                let playbackProjector = PlaybackAnalyticsProjector(readModel: readModel)
+                await playbackProjector.registerMigration()
+                try await readModel.migrate()
+
+                let playbackInjector = PlaybackInjector()
+                let pipeline = ProjectionPipeline()
+
+                var mutableServices = SongbirdServices(
+                    eventStore: eventStore,
+                    projectionPipeline: pipeline,
+                    positionStore: positionStore,
+                    eventRegistry: registry
+                )
+                mutableServices.registerProjector(playbackProjector)
+                mutableServices.registerInjector(playbackInjector)
+                let services = mutableServices
+
+                let system = SongbirdActorSystem(processName: "analytics-worker")
+                try await system.startServer(socketPath: socketPath)
+
+                let handler = AnalyticsCommandHandler(
+                    actorSystem: system,
+                    services: services,
+                    readModel: readModel,
+                    playbackInjector: playbackInjector
+                )
+                _ = handler
+
+                print("Analytics worker (Postgres) started on \(socketPath)")
+
+                // Run services (blocks until cancelled)
+                do {
+                    try await services.run()
+                } catch {
+                    try? await system.shutdown()
+                    throw error
+                }
+                try? await system.shutdown()
             }
-            try await group.next()
-            group.cancelAll()
-        }
-
-        let registry = EventTypeRegistry()
-        registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
-        registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
-
-        // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client)
-        let positionStore = PostgresPositionStore(client: client)
-        let snapshotStore = PostgresSnapshotStore(client: client)
-
-        // Read model (per-worker DuckDB)
-        let readModel = try ReadModelStore(path: duckdbPath)
-
-        let playbackProjector = PlaybackAnalyticsProjector(readModel: readModel)
-        await playbackProjector.registerMigration()
-        try await readModel.migrate()
-
-        let playbackInjector = PlaybackInjector()
-        let pipeline = ProjectionPipeline()
-
-        let _viewCountRepo = AggregateRepository<ViewCountAggregate>(
-            store: eventStore,
-            registry: registry,
-            snapshotStore: snapshotStore,
-            snapshotPolicy: .everyNEvents(100)
-        )
-        _ = _viewCountRepo  // Reserved for future view-count routes
-
-        var mutableServices = SongbirdServices(
-            eventStore: eventStore,
-            projectionPipeline: pipeline,
-            positionStore: positionStore,
-            eventRegistry: registry
-        )
-        mutableServices.registerProjector(playbackProjector)
-        mutableServices.registerInjector(playbackInjector)
-        let services = mutableServices
-
-        let system = SongbirdActorSystem(processName: "analytics-worker")
-        try await system.startServer(socketPath: socketPath)
-
-        let handler = AnalyticsCommandHandler(
-            actorSystem: system,
-            services: services,
-            readModel: readModel,
-            playbackInjector: playbackInjector
-        )
-        _ = handler
-
-        print("Analytics worker (Postgres) started on \(socketPath)")
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { await client.run() }
-            group.addTask { try await services.run() }
             try await group.waitForAll()
         }
     }

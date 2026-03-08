@@ -2,9 +2,7 @@ import Distributed
 import Foundation
 import Hummingbird
 import NIOCore
-import Songbird
 import SongbirdDistributed
-import SongbirdHummingbird
 
 // MARK: - Remote Actor Proxies
 //
@@ -279,6 +277,12 @@ struct WarblerGatewayApp {
         )
 
         print("Warbler Gateway starting on http://localhost:\(port)")
-        try await app.runService()
+        do {
+            try await app.runService()
+        } catch {
+            try? await system.shutdown()
+            throw error
+        }
+        try? await system.shutdown()
     }
 }

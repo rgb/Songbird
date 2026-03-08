@@ -74,7 +74,7 @@ struct WarblerAnalyticsWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 4 else {
             print("Usage: WarblerAnalyticsWorker <sqlite-path> <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let sqlitePath = args[1]
         let duckdbPath = args[2]
@@ -94,15 +94,6 @@ struct WarblerAnalyticsWorkerApp {
 
         let playbackInjector = PlaybackInjector()
         let pipeline = ProjectionPipeline()
-
-        let snapshotStore = try SQLiteSnapshotStore(path: sqlitePath)
-        let _viewCountRepo = AggregateRepository<ViewCountAggregate>(
-            store: eventStore,
-            registry: registry,
-            snapshotStore: snapshotStore,
-            snapshotPolicy: .everyNEvents(100)
-        )
-        _ = _viewCountRepo  // Reserved for future view-count routes
 
         var mutableServices = SongbirdServices(
             eventStore: eventStore,
@@ -126,6 +117,12 @@ struct WarblerAnalyticsWorkerApp {
         _ = handler
 
         print("Analytics worker started on \(socketPath)")
-        try await services.run()
+        do {
+            try await services.run()
+        } catch {
+            try? await system.shutdown()
+            throw error
+        }
+        try? await system.shutdown()
     }
 }

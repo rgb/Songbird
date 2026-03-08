@@ -107,7 +107,7 @@ struct WarblerCatalogWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 3 else {
             print("Usage: WarblerCatalogWorker <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let duckdbPath = args[1]
         let socketPath = args[2]
@@ -124,68 +124,70 @@ struct WarblerCatalogWorkerApp {
         let client = PostgresClient(configuration: pgConfig)
         let logger = Logger(label: "warbler.catalog")
 
-        // Run migrations
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
             group.addTask {
+                // Run migrations first
                 try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+
+                // Event type registry (with versioning upcast)
+                let registry = EventTypeRegistry()
+                registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
+                registry.registerUpcast(
+                    from: VideoPublishedV1.self,
+                    to: VideoEvent.self,
+                    upcast: VideoPublishedUpcast(),
+                    oldEventType: CatalogEventTypes.videoPublishedV1
+                )
+
+                // Stores (Postgres-backed)
+                let eventStore = PostgresEventStore(client: client)
+                let positionStore = PostgresPositionStore(client: client)
+
+                // Read model (per-worker DuckDB)
+                let readModel = try ReadModelStore(path: duckdbPath)
+
+                let videoCatalogProjector = VideoCatalogProjector(readModel: readModel)
+                await videoCatalogProjector.registerMigration()
+                try await readModel.migrate()
+
+                let pipeline = ProjectionPipeline()
+
+                var mutableServices = SongbirdServices(
+                    eventStore: eventStore,
+                    projectionPipeline: pipeline,
+                    positionStore: positionStore,
+                    eventRegistry: registry
+                )
+                mutableServices.registerProjector(videoCatalogProjector)
+                let services = mutableServices
+
+                let repository = AggregateRepository<VideoAggregate>(
+                    store: eventStore, registry: registry
+                )
+
+                let system = SongbirdActorSystem(processName: "catalog-worker")
+                try await system.startServer(socketPath: socketPath)
+
+                let handler = CatalogCommandHandler(
+                    actorSystem: system,
+                    services: services,
+                    repository: repository,
+                    readModel: readModel
+                )
+                _ = handler
+
+                print("Catalog worker (Postgres) started on \(socketPath)")
+
+                // Run services (blocks until cancelled)
+                do {
+                    try await services.run()
+                } catch {
+                    try? await system.shutdown()
+                    throw error
+                }
+                try? await system.shutdown()
             }
-            try await group.next()
-            group.cancelAll()
-        }
-
-        // Event type registry (with versioning upcast)
-        let registry = EventTypeRegistry()
-        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
-        registry.registerUpcast(
-            from: VideoPublishedV1.self,
-            to: VideoEvent.self,
-            upcast: VideoPublishedUpcast(),
-            oldEventType: CatalogEventTypes.videoPublishedV1
-        )
-
-        // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client)
-        let positionStore = PostgresPositionStore(client: client)
-
-        // Read model (per-worker DuckDB)
-        let readModel = try ReadModelStore(path: duckdbPath)
-
-        let videoCatalogProjector = VideoCatalogProjector(readModel: readModel)
-        await videoCatalogProjector.registerMigration()
-        try await readModel.migrate()
-
-        let pipeline = ProjectionPipeline()
-
-        var mutableServices = SongbirdServices(
-            eventStore: eventStore,
-            projectionPipeline: pipeline,
-            positionStore: positionStore,
-            eventRegistry: registry
-        )
-        mutableServices.registerProjector(videoCatalogProjector)
-        let services = mutableServices
-
-        let repository = AggregateRepository<VideoAggregate>(
-            store: eventStore, registry: registry
-        )
-
-        let system = SongbirdActorSystem(processName: "catalog-worker")
-        try await system.startServer(socketPath: socketPath)
-
-        let handler = CatalogCommandHandler(
-            actorSystem: system,
-            services: services,
-            repository: repository,
-            readModel: readModel
-        )
-        _ = handler
-
-        print("Catalog worker (Postgres) started on \(socketPath)")
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { await client.run() }
-            group.addTask { try await services.run() }
             try await group.waitForAll()
         }
     }

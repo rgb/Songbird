@@ -105,7 +105,7 @@ struct WarblerCatalogWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 4 else {
             print("Usage: WarblerCatalogWorker <sqlite-path> <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let sqlitePath = args[1]
         let duckdbPath = args[2]
@@ -156,6 +156,12 @@ struct WarblerCatalogWorkerApp {
         _ = handler
 
         print("Catalog worker started on \(socketPath)")
-        try await services.run()
+        do {
+            try await services.run()
+        } catch {
+            try? await system.shutdown()
+            throw error
+        }
+        try? await system.shutdown()
     }
 }

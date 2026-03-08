@@ -90,7 +90,7 @@ struct WarblerIdentityWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 3 else {
             print("Usage: WarblerIdentityWorker <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let duckdbPath = args[1]
         let socketPath = args[2]
@@ -107,70 +107,70 @@ struct WarblerIdentityWorkerApp {
         let client = PostgresClient(configuration: pgConfig)
         let logger = Logger(label: "warbler.identity")
 
-        // Run migrations
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
             group.addTask {
+                // Run migrations first
                 try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+
+                // Event type registry
+                let registry = EventTypeRegistry()
+                registry.register(UserEvent.self, eventTypes: [IdentityEventTypes.userRegistered, IdentityEventTypes.userProfileUpdated, IdentityEventTypes.userDeactivated])
+
+                // Stores (Postgres-backed)
+                let eventStore = PostgresEventStore(client: client)
+                let positionStore = PostgresPositionStore(client: client)
+
+                // Read model (per-worker DuckDB)
+                let readModel = try ReadModelStore(path: duckdbPath)
+
+                // Projector
+                let userProjector = UserProjector(readModel: readModel)
+                await userProjector.registerMigration()
+                try await readModel.migrate()
+
+                // Projection pipeline
+                let pipeline = ProjectionPipeline()
+
+                // Services
+                var mutableServices = SongbirdServices(
+                    eventStore: eventStore,
+                    projectionPipeline: pipeline,
+                    positionStore: positionStore,
+                    eventRegistry: registry
+                )
+                mutableServices.registerProjector(userProjector)
+                let services = mutableServices
+
+                // Aggregate repository
+                let repository = AggregateRepository<UserAggregate>(
+                    store: eventStore, registry: registry
+                )
+
+                // Distributed actor system
+                let system = SongbirdActorSystem(processName: "identity-worker")
+                try await system.startServer(socketPath: socketPath)
+
+                // Create and register the command handler
+                let handler = IdentityCommandHandler(
+                    actorSystem: system,
+                    services: services,
+                    repository: repository,
+                    readModel: readModel
+                )
+                _ = handler  // Keep alive
+
+                print("Identity worker (Postgres) started on \(socketPath)")
+
+                // Run services (blocks until cancelled)
+                do {
+                    try await services.run()
+                } catch {
+                    try? await system.shutdown()
+                    throw error
+                }
+                try? await system.shutdown()
             }
-            // Wait for migrations to complete, then cancel client.run()
-            try await group.next()
-            group.cancelAll()
-        }
-
-        // Event type registry
-        let registry = EventTypeRegistry()
-        registry.register(UserEvent.self, eventTypes: [IdentityEventTypes.userRegistered, IdentityEventTypes.userProfileUpdated, IdentityEventTypes.userDeactivated])
-
-        // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client)
-        let positionStore = PostgresPositionStore(client: client)
-
-        // Read model (per-worker DuckDB)
-        let readModel = try ReadModelStore(path: duckdbPath)
-
-        // Projector
-        let userProjector = UserProjector(readModel: readModel)
-        await userProjector.registerMigration()
-        try await readModel.migrate()
-
-        // Projection pipeline
-        let pipeline = ProjectionPipeline()
-
-        // Services
-        var mutableServices = SongbirdServices(
-            eventStore: eventStore,
-            projectionPipeline: pipeline,
-            positionStore: positionStore,
-            eventRegistry: registry
-        )
-        mutableServices.registerProjector(userProjector)
-        let services = mutableServices
-
-        // Aggregate repository
-        let repository = AggregateRepository<UserAggregate>(
-            store: eventStore, registry: registry
-        )
-
-        // Distributed actor system
-        let system = SongbirdActorSystem(processName: "identity-worker")
-        try await system.startServer(socketPath: socketPath)
-
-        // Create and register the command handler
-        let handler = IdentityCommandHandler(
-            actorSystem: system,
-            services: services,
-            repository: repository,
-            readModel: readModel
-        )
-        _ = handler  // Keep alive
-
-        print("Identity worker (Postgres) started on \(socketPath)")
-
-        // Run services + Postgres client
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { await client.run() }
-            group.addTask { try await services.run() }
             try await group.waitForAll()
         }
     }

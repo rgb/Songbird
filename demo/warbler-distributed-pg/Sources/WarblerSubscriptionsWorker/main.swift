@@ -71,7 +71,7 @@ struct WarblerSubscriptionsWorkerApp {
         let args = CommandLine.arguments
         guard args.count >= 3 else {
             print("Usage: WarblerSubscriptionsWorker <duckdb-path> <socket-path>")
-            return
+            Darwin.exit(1)
         }
         let duckdbPath = args[1]
         let socketPath = args[2]
@@ -88,60 +88,62 @@ struct WarblerSubscriptionsWorkerApp {
         let client = PostgresClient(configuration: pgConfig)
         let logger = Logger(label: "warbler.subscriptions")
 
-        // Run migrations
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
             group.addTask {
+                // Run migrations first
                 try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+
+                let registry = EventTypeRegistry()
+                registry.register(SubscriptionEvent.self, eventTypes: [SubscriptionEventTypes.subscriptionRequested, SubscriptionEventTypes.paymentConfirmed, SubscriptionEventTypes.paymentFailed])
+                registry.register(SubscriptionLifecycleEvent.self, eventTypes: [LifecycleEventTypes.accessGranted, LifecycleEventTypes.subscriptionCancelled])
+
+                // Stores (Postgres-backed)
+                let eventStore = PostgresEventStore(client: client)
+                let positionStore = PostgresPositionStore(client: client)
+
+                // Read model (per-worker DuckDB)
+                let readModel = try ReadModelStore(path: duckdbPath)
+
+                let subscriptionProjector = SubscriptionProjector(readModel: readModel)
+                await subscriptionProjector.registerMigration()
+                try await readModel.migrate()
+
+                let emailGateway = EmailNotificationGateway()
+                let pipeline = ProjectionPipeline()
+
+                var mutableServices = SongbirdServices(
+                    eventStore: eventStore,
+                    projectionPipeline: pipeline,
+                    positionStore: positionStore,
+                    eventRegistry: registry
+                )
+                mutableServices.registerProjector(subscriptionProjector)
+                mutableServices.registerProcessManager(SubscriptionLifecycleProcess.self, tickInterval: .seconds(1))
+                mutableServices.registerGateway(emailGateway, tickInterval: .seconds(1))
+                let services = mutableServices
+
+                let system = SongbirdActorSystem(processName: "subscriptions-worker")
+                try await system.startServer(socketPath: socketPath)
+
+                let handler = SubscriptionsCommandHandler(
+                    actorSystem: system,
+                    services: services,
+                    readModel: readModel
+                )
+                _ = handler
+
+                print("Subscriptions worker (Postgres) started on \(socketPath)")
+
+                // Run services (blocks until cancelled)
+                do {
+                    try await services.run()
+                } catch {
+                    try? await system.shutdown()
+                    throw error
+                }
+                try? await system.shutdown()
             }
-            try await group.next()
-            group.cancelAll()
-        }
-
-        let registry = EventTypeRegistry()
-        registry.register(SubscriptionEvent.self, eventTypes: [SubscriptionEventTypes.subscriptionRequested, SubscriptionEventTypes.paymentConfirmed, SubscriptionEventTypes.paymentFailed])
-        registry.register(SubscriptionLifecycleEvent.self, eventTypes: [LifecycleEventTypes.accessGranted, LifecycleEventTypes.subscriptionCancelled])
-
-        // Stores (Postgres-backed)
-        let eventStore = PostgresEventStore(client: client)
-        let positionStore = PostgresPositionStore(client: client)
-
-        // Read model (per-worker DuckDB)
-        let readModel = try ReadModelStore(path: duckdbPath)
-
-        let subscriptionProjector = SubscriptionProjector(readModel: readModel)
-        await subscriptionProjector.registerMigration()
-        try await readModel.migrate()
-
-        let emailGateway = EmailNotificationGateway()
-        let pipeline = ProjectionPipeline()
-
-        var mutableServices = SongbirdServices(
-            eventStore: eventStore,
-            projectionPipeline: pipeline,
-            positionStore: positionStore,
-            eventRegistry: registry
-        )
-        mutableServices.registerProjector(subscriptionProjector)
-        mutableServices.registerProcessManager(SubscriptionLifecycleProcess.self, tickInterval: .seconds(1))
-        mutableServices.registerGateway(emailGateway, tickInterval: .seconds(1))
-        let services = mutableServices
-
-        let system = SongbirdActorSystem(processName: "subscriptions-worker")
-        try await system.startServer(socketPath: socketPath)
-
-        let handler = SubscriptionsCommandHandler(
-            actorSystem: system,
-            services: services,
-            readModel: readModel
-        )
-        _ = handler
-
-        print("Subscriptions worker (Postgres) started on \(socketPath)")
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { await client.run() }
-            group.addTask { try await services.run() }
             try await group.waitForAll()
         }
     }
