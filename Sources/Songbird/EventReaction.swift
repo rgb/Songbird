@@ -41,7 +41,7 @@
 /// ```
 public protocol EventReaction {
     /// The process manager state type this reaction folds into.
-    associatedtype PMState: Sendable
+    associatedtype PMState: Sendable, Equatable
     /// The concrete event type this reaction handles.
     associatedtype Input: Event
 

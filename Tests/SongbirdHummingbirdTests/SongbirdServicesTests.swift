@@ -19,22 +19,26 @@ private actor ServicesTestGateway: Gateway {
     }
 }
 
+private struct ServicesTestState: Sendable, Equatable {}
+
 private enum ServicesTestReaction: EventReaction {
-    typealias PMState = Void
+    typealias PMState = ServicesTestState
     typealias Input = ServicesTestEvent
 
     static let eventTypes = ["ServicesTestEvent"]
 
     static func route(_ event: ServicesTestEvent) -> String? { nil }
-    static func apply(_ state: Void, _ event: ServicesTestEvent) -> Void { () }
+    static func apply(_ state: ServicesTestState, _ event: ServicesTestEvent) -> ServicesTestState {
+        state
+    }
 }
 
 private enum ServicesTestPM: ProcessManager {
-    typealias State = Void
+    typealias State = ServicesTestState
 
     static let processId = "services-test-pm"
-    static let initialState: Void = ()
-    static let reactions: [AnyReaction<Void>] = [
+    static let initialState = ServicesTestState()
+    static let reactions: [AnyReaction<ServicesTestState>] = [
         reaction(for: ServicesTestReaction.self, categories: ["svcTest"]),
     ]
 }

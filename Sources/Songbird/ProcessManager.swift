@@ -11,7 +11,7 @@
 /// Usage:
 /// ```swift
 /// enum FulfillmentPM: ProcessManager {
-///     struct State: Sendable { var total: Int; var paid: Bool }
+///     struct State: Sendable, Equatable { var total: Int; var paid: Bool }
 ///
 ///     static let processId = "fulfillment"
 ///     static let initialState = State(total: 0, paid: false)
@@ -23,7 +23,7 @@
 /// }
 /// ```
 public protocol ProcessManager {
-    associatedtype State: Sendable
+    associatedtype State: Sendable, Equatable
 
     /// Unique identifier for this process manager. Used as the subscriber ID for the
     /// event subscription and as the category for output event streams.
@@ -62,7 +62,9 @@ extension ProcessManager {
             handle: { state, recorded in
                 let event = try R.decode(recorded)
                 let newState = R.apply(state, event)
-                let output = R.react(newState, event)
+                // Skip output when state unchanged — the event was already processed
+                // or is irrelevant. This ensures idempotency under at-least-once delivery.
+                let output = (newState == state) ? [] : R.react(newState, event)
                 return (newState, output)
             }
         )

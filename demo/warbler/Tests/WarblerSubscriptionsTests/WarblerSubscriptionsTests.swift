@@ -81,6 +81,50 @@ struct SubscriptionProcessTests {
         #expect(harness.output.isEmpty)
     }
 
+    @Test func duplicatePaymentConfirmedDoesNotProduceDuplicateOutput() throws {
+        var harness = TestProcessManagerHarness<SubscriptionLifecycleProcess>()
+        try harness.given(
+            SubscriptionEvent.requested(subscriptionId: "sub-1", userId: "user-1", plan: "pro"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        // First delivery — should produce output
+        try harness.given(
+            SubscriptionEvent.paymentConfirmed(subscriptionId: "sub-1"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        #expect(harness.output.count == 1)
+
+        // Second delivery (re-delivery) — should NOT produce output
+        try harness.given(
+            SubscriptionEvent.paymentConfirmed(subscriptionId: "sub-1"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        #expect(harness.output.count == 1, "Re-delivered event should not produce duplicate output")
+        #expect(harness.state(for: "sub-1").status == .active)
+    }
+
+    @Test func duplicatePaymentFailedDoesNotProduceDuplicateOutput() throws {
+        var harness = TestProcessManagerHarness<SubscriptionLifecycleProcess>()
+        try harness.given(
+            SubscriptionEvent.requested(subscriptionId: "sub-1", userId: "user-1", plan: "pro"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        // First delivery
+        try harness.given(
+            SubscriptionEvent.paymentFailed(subscriptionId: "sub-1", reason: "Declined"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        #expect(harness.output.count == 1)
+
+        // Second delivery (re-delivery)
+        try harness.given(
+            SubscriptionEvent.paymentFailed(subscriptionId: "sub-1", reason: "Declined"),
+            streamName: StreamName(category: "subscription", id: "sub-1")
+        )
+        #expect(harness.output.count == 1, "Re-delivered event should not produce duplicate output")
+        #expect(harness.state(for: "sub-1").status == .cancelled)
+    }
+
     @Test func isolatesPerEntityState() throws {
         var harness = TestProcessManagerHarness<SubscriptionLifecycleProcess>()
         try harness.given(
