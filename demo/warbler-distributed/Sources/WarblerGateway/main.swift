@@ -15,37 +15,37 @@ import SongbirdHummingbird
 distributed actor IdentityCommandHandler {
     typealias ActorSystem = SongbirdActorSystem
 
-    distributed func registerUser(id: String, email: String, displayName: String) async throws { fatalError() }
-    distributed func updateProfile(userId: String, displayName: String) async throws { fatalError() }
-    distributed func deactivateUser(userId: String) async throws { fatalError() }
-    distributed func getUser(id: String) async throws -> UserDTO? { fatalError() }
+    distributed func registerUser(id: String, email: String, displayName: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func updateProfile(userId: String, displayName: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func deactivateUser(userId: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func getUser(id: String) async throws -> UserDTO? { fatalError("Remote-only actor — local invocation is not supported") }
 }
 
 distributed actor CatalogCommandHandler {
     typealias ActorSystem = SongbirdActorSystem
 
-    distributed func publishVideo(id: String, title: String, description: String, creatorId: String) async throws { fatalError() }
-    distributed func updateVideoMetadata(id: String, title: String, description: String) async throws { fatalError() }
-    distributed func completeTranscoding(id: String) async throws { fatalError() }
-    distributed func unpublishVideo(id: String) async throws { fatalError() }
-    distributed func getVideo(id: String) async throws -> VideoDTO? { fatalError() }
-    distributed func listVideos() async throws -> [VideoDTO] { fatalError() }
+    distributed func publishVideo(id: String, title: String, description: String, creatorId: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func updateVideoMetadata(id: String, title: String, description: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func completeTranscoding(id: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func unpublishVideo(id: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func getVideo(id: String) async throws -> VideoDTO? { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func listVideos() async throws -> [VideoDTO] { fatalError("Remote-only actor — local invocation is not supported") }
 }
 
 distributed actor SubscriptionsCommandHandler {
     typealias ActorSystem = SongbirdActorSystem
 
-    distributed func requestSubscription(id: String, userId: String, plan: String) async throws { fatalError() }
-    distributed func confirmPayment(subscriptionId: String) async throws { fatalError() }
-    distributed func getSubscriptions(userId: String) async throws -> [SubscriptionDTO] { fatalError() }
+    distributed func requestSubscription(id: String, userId: String, plan: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func confirmPayment(subscriptionId: String) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func getSubscriptions(userId: String) async throws -> [SubscriptionDTO] { fatalError("Remote-only actor — local invocation is not supported") }
 }
 
 distributed actor AnalyticsCommandHandler {
     typealias ActorSystem = SongbirdActorSystem
 
-    distributed func recordView(videoId: String, userId: String, watchedSeconds: Int) async throws { fatalError() }
-    distributed func getVideoViews(videoId: String) async throws -> ViewCountDTO? { fatalError() }
-    distributed func getTopVideos() async throws -> [TopVideoDTO] { fatalError() }
+    distributed func recordView(videoId: String, userId: String, watchedSeconds: Int) async throws { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func getVideoViews(videoId: String) async throws -> ViewCountDTO? { fatalError("Remote-only actor — local invocation is not supported") }
+    distributed func getTopVideos() async throws -> [TopVideoDTO] { fatalError("Remote-only actor — local invocation is not supported") }
 }
 
 // MARK: - DTOs (must match worker-side definitions exactly)

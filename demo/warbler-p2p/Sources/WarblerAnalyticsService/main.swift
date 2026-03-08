@@ -80,7 +80,8 @@ struct WarblerAnalyticsService {
             let result: CountRow? = try await readModel.queryFirst(CountRow.self) {
                 "SELECT COUNT(*) AS view_count, COALESCE(SUM(watched_seconds), 0) AS total_seconds FROM video_views WHERE video_id = \(param: id)"
             }
-            let data = try JSONEncoder().encode(result)
+            let row = result ?? CountRow(viewCount: 0, totalSeconds: 0)
+            let data = try JSONEncoder().encode(row)
             return Response(
                 status: .ok,
                 headers: [.contentType: "application/json"],

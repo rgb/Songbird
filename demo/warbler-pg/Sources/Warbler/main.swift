@@ -165,7 +165,7 @@ struct WarblerApp {
                 repository: userRepo,
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         router.delete("/users/{id}") { _, context -> Response in
@@ -178,7 +178,7 @@ struct WarblerApp {
                 repository: userRepo,
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         // MARK: - Catalog Routes
@@ -228,7 +228,7 @@ struct WarblerApp {
                 repository: videoRepo,
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         router.post("/videos/{id}/transcode-complete") { _, context -> Response in
@@ -241,7 +241,7 @@ struct WarblerApp {
                 repository: videoRepo,
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         router.delete("/videos/{id}") { _, context -> Response in
@@ -254,7 +254,7 @@ struct WarblerApp {
                 repository: videoRepo,
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         // MARK: - Subscription Routes
@@ -289,7 +289,7 @@ struct WarblerApp {
                 metadata: EventMetadata(traceId: context.requestId),
                 services: services
             )
-            return Response(status: .ok)
+            return Response(status: .noContent)
         }
 
         // MARK: - Analytics Routes
@@ -312,6 +312,9 @@ struct WarblerApp {
             struct CountRow: Codable { let viewCount: Int64; let totalSeconds: Int64 }
             let result: CountRow? = try await readModel.queryFirst(CountRow.self) {
                 "SELECT COUNT(*) AS view_count, COALESCE(SUM(watched_seconds), 0) AS total_seconds FROM video_views WHERE video_id = \(param: id)"
+            }
+            guard let result else {
+                return try jsonResponse(CountRow(viewCount: 0, totalSeconds: 0))
             }
             return try jsonResponse(result)
         }
