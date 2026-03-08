@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "WarblerDistributed",
     platforms: [
-        .macOS(.v14),
+        .macOS(.v15),
     ],
     dependencies: [
         .package(name: "Songbird", path: "../../"),
@@ -20,10 +20,6 @@ let package = Package(
             dependencies: [
                 .product(name: "SongbirdHummingbird", package: "Songbird"),
                 .product(name: "SongbirdDistributed", package: "Songbird"),
-                .product(name: "WarblerIdentity", package: "Warbler"),
-                .product(name: "WarblerCatalog", package: "Warbler"),
-                .product(name: "WarblerSubscriptions", package: "Warbler"),
-                .product(name: "WarblerAnalytics", package: "Warbler"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),

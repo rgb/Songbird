@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "WarblerPG",
     platforms: [
-        .macOS(.v14),
+        .macOS(.v15),
     ],
     dependencies: [
         .package(name: "Songbird", path: "../../"),
