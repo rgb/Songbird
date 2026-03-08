@@ -52,7 +52,6 @@ struct WarblerApp {
 
         // Analytics events
         registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
-        registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
 
         // MARK: - Event Store (in-memory SQLite for demo; use a file path for persistence)
 

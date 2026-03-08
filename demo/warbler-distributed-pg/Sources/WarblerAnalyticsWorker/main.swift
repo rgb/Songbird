@@ -101,7 +101,6 @@ struct WarblerAnalyticsWorkerApp {
 
                 let registry = EventTypeRegistry()
                 registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
-                registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
 
                 // Stores (Postgres-backed)
                 let eventStore = PostgresEventStore(client: client)
