@@ -64,6 +64,20 @@ private actor ServicesTestInjector: Injector {
 
 @Suite("SongbirdServices")
 struct SongbirdServicesTests {
+    /// Polls a condition until it returns true, with a timeout safety net.
+    private func waitUntil(
+        timeout: Duration = .seconds(5),
+        _ condition: () async throws -> Bool
+    ) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while try !(await condition()) {
+            guard ContinuousClock.now < deadline else {
+                Issue.record("Timed out waiting for condition")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
     @Test func registerProjectorAndRunPipeline() async throws {
         let store = InMemoryEventStore()
         let pipeline = ProjectionPipeline()
@@ -118,8 +132,10 @@ struct SongbirdServicesTests {
             expectedVersion: nil
         )
 
-        // Wait for the gateway runner to poll and process
-        try await Task.sleep(for: .milliseconds(100))
+        // Poll until the gateway runner processes the event
+        try await waitUntil {
+            await gateway.handledEvents.count >= 1
+        }
 
         let count = await gateway.handledEvents.count
         #expect(count == 1)
@@ -169,8 +185,12 @@ struct SongbirdServicesTests {
             expectedVersion: nil
         )
 
-        // Wait for the PM runner to poll and process
-        try await Task.sleep(for: .milliseconds(100))
+        // Poll until the PM runner processes the event
+        let streamName = StreamName(category: "svcTest", id: "1")
+        try await waitUntil {
+            let events = try await store.readStream(streamName, from: 0, maxCount: 10)
+            return events.count >= 1
+        }
 
         // Verify the event was persisted in the store
         let storedEvents = try await store.readStream(
@@ -242,8 +262,12 @@ struct SongbirdServicesTests {
         )
         injector.yield(inbound)
 
-        // Give the runner time to process the yielded event
-        try await Task.sleep(for: .milliseconds(100))
+        // Poll until the injector runner processes the yielded event
+        let inboundStream = StreamName(category: "inboundTest", id: "1")
+        try await waitUntil {
+            let events = try await store.readStream(inboundStream, from: 0, maxCount: 10)
+            return events.count >= 1
+        }
 
         let storedEvents = try await store.readStream(
             StreamName(category: "inboundTest", id: "1"),

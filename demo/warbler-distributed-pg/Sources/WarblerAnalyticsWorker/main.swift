@@ -39,7 +39,7 @@ distributed actor AnalyticsCommandHandler {
             stream: StreamName(category: "analytics", id: videoId),
             metadata: EventMetadata()
         )
-        await playbackInjector.inject(inbound)
+        playbackInjector.inject(inbound)
     }
 
     // MARK: - Queries
