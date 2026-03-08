@@ -38,16 +38,6 @@ struct WarblerApp {
         let client = PostgresClient(configuration: pgConfig)
         let logger = Logger(label: "warbler")
 
-        // Run migrations
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { await client.run() }
-            group.addTask {
-                try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
-            }
-            try await group.next()
-            group.cancelAll()
-        }
-
         // MARK: - Event Type Registry
 
         let registry = EventTypeRegistry()
@@ -344,9 +334,16 @@ struct WarblerApp {
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { await client.run() }
-            group.addTask { try await services.run() }
-            group.addTask { try await app.runService() }
-            try await group.waitForAll()
+            group.addTask {
+                try await SongbirdPostgresMigrations.apply(client: client, logger: logger)
+                try await withThrowingTaskGroup(of: Void.self) { serviceGroup in
+                    serviceGroup.addTask { try await services.run() }
+                    serviceGroup.addTask { try await app.runService() }
+                    try await serviceGroup.waitForAll()
+                }
+            }
+            try await group.next()
+            group.cancelAll()
         }
     }
 }

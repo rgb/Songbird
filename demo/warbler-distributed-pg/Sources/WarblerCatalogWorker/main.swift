@@ -188,7 +188,8 @@ struct WarblerCatalogWorkerApp {
                 }
                 try? await system.shutdown()
             }
-            try await group.waitForAll()
+            try await group.next()
+            group.cancelAll()
         }
     }
 }

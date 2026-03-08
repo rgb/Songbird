@@ -150,7 +150,8 @@ struct WarblerIdentityService {
                     try await serviceGroup.waitForAll()
                 }
             }
-            try await group.waitForAll()
+            try await group.next()
+            group.cancelAll()
         }
     }
 }
