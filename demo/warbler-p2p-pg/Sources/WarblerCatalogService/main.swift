@@ -174,7 +174,7 @@ struct WarblerCatalogService {
                     configuration: .init(address: .hostname(bindHost, port: port))
                 )
 
-                print("WarblerCatalogService (Postgres) starting on http://\(bindHost):\(port)")
+                logger.info("WarblerCatalogService (Postgres) starting on http://\(bindHost):\(port)")
 
                 try await withThrowingTaskGroup(of: Void.self) { serviceGroup in
                     serviceGroup.addTask { try await services.run() }

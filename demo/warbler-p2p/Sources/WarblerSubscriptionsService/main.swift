@@ -1,5 +1,6 @@
 import Foundation
 import Hummingbird
+import Logging
 import NIOCore
 import Songbird
 import SongbirdHummingbird
@@ -16,6 +17,7 @@ struct WarblerSubscriptionsService {
         let duckdbPath = ProcessInfo.processInfo.environment["DUCKDB_PATH"] ?? "data/subscriptions.duckdb"
         let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8083") ?? 8083
         let bindHost = ProcessInfo.processInfo.environment["BIND_HOST"] ?? "localhost"
+        let logger = Logger(label: "warbler.subscriptions")
 
         // MARK: - Event Type Registry
 
@@ -106,12 +108,13 @@ struct WarblerSubscriptionsService {
             configuration: .init(address: .hostname(bindHost, port: port))
         )
 
-        print("WarblerSubscriptionsService starting on http://\(bindHost):\(port)")
+        logger.info("WarblerSubscriptionsService starting on http://\(bindHost):\(port)")
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { try await services.run() }
             group.addTask { try await app.runService() }
-            try await group.waitForAll()
+            try await group.next()
+            group.cancelAll()
         }
     }
 }

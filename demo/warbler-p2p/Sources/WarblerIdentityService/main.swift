@@ -1,5 +1,6 @@
 import Foundation
 import Hummingbird
+import Logging
 import NIOCore
 import Songbird
 import SongbirdHummingbird
@@ -16,6 +17,7 @@ struct WarblerIdentityService {
         let duckdbPath = ProcessInfo.processInfo.environment["DUCKDB_PATH"] ?? "data/identity.duckdb"
         let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8081") ?? 8081
         let bindHost = ProcessInfo.processInfo.environment["BIND_HOST"] ?? "localhost"
+        let logger = Logger(label: "warbler.identity")
 
         // MARK: - Event Type Registry
 
@@ -123,12 +125,13 @@ struct WarblerIdentityService {
             configuration: .init(address: .hostname(bindHost, port: port))
         )
 
-        print("WarblerIdentityService starting on http://\(bindHost):\(port)")
+        logger.info("WarblerIdentityService starting on http://\(bindHost):\(port)")
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { try await services.run() }
             group.addTask { try await app.runService() }
-            try await group.waitForAll()
+            try await group.next()
+            group.cancelAll()
         }
     }
 }

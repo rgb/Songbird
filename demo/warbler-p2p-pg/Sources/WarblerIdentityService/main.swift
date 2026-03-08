@@ -142,7 +142,7 @@ struct WarblerIdentityService {
                     configuration: .init(address: .hostname(bindHost, port: port))
                 )
 
-                print("WarblerIdentityService (Postgres) starting on http://\(bindHost):\(port)")
+                logger.info("WarblerIdentityService (Postgres) starting on http://\(bindHost):\(port)")
 
                 try await withThrowingTaskGroup(of: Void.self) { serviceGroup in
                     serviceGroup.addTask { try await services.run() }
