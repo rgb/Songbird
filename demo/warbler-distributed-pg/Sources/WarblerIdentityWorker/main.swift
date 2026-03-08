@@ -159,7 +159,7 @@ struct WarblerIdentityWorkerApp {
                     readModel: readModel
                 )
 
-                print("Identity worker (Postgres) started on \(socketPath)")
+                logger.info("Identity worker (Postgres) started on \(socketPath)")
 
                 // Run services (blocks until cancelled)
                 do {

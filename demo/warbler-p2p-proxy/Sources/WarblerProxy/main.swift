@@ -2,6 +2,7 @@ import AsyncHTTPClient
 import Foundation
 import Hummingbird
 import HTTPTypes
+import Logging
 import NIOCore
 import NIOHTTP1
 
@@ -15,31 +16,33 @@ struct WarblerProxy {
     ]
 
     static func main() async throws {
+        let logger = Logger(label: "warbler.proxy")
+        let httpClient = HTTPClient()
         let router = Router()
 
         // Health check route
         router.get("/health") { _, _ -> Response in
-            try await healthCheck()
+            try await healthCheck(httpClient: httpClient)
         }
 
         // Proxy middleware handles all other requests
-        router.addMiddleware { ProxyMiddleware(backends: backends) }
+        router.addMiddleware { ProxyMiddleware(backends: backends, httpClient: httpClient) }
 
         let app = Application(
             router: router,
             configuration: .init(address: .hostname("localhost", port: 8080))
         )
 
-        print("WarblerProxy starting on http://localhost:8080")
-        print("Routing:")
+        logger.info("WarblerProxy starting on http://localhost:8080")
+        logger.info("Routing:")
         for b in backends {
-            print("  \(b.prefix)/* → localhost:\(b.port) (\(b.name))")
+            logger.info("  \(b.prefix)/* -> localhost:\(b.port) (\(b.name))")
         }
-        print("")
         try await app.runService()
+        try await httpClient.shutdown()
     }
 
-    static func healthCheck() async throws -> Response {
+    static func healthCheck(httpClient: HTTPClient) async throws -> Response {
         struct HealthResponse: Codable, Sendable {
             let status: String
             let services: [String: String]
@@ -54,7 +57,7 @@ struct WarblerProxy {
             request.method = .GET
 
             do {
-                let response = try await HTTPClient.shared.execute(request, timeout: .seconds(5))
+                let response = try await httpClient.execute(request, timeout: .seconds(5))
                 _ = try? await response.body.collect(upTo: 1024)
                 serviceStatuses[backend.name] = "up"
             } catch {
@@ -78,6 +81,7 @@ struct WarblerProxy {
 
 struct ProxyMiddleware: RouterMiddleware {
     let backends: [(prefix: String, port: Int, name: String)]
+    let httpClient: HTTPClient
 
     func handle(
         _ request: Request,
@@ -125,7 +129,7 @@ struct ProxyMiddleware: RouterMiddleware {
         }
 
         do {
-            let response = try await HTTPClient.shared.execute(clientRequest, timeout: .seconds(30))
+            let response = try await httpClient.execute(clientRequest, timeout: .seconds(30))
 
             var responseHeaders = HTTPFields()
             for header in response.headers {

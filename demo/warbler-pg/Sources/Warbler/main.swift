@@ -12,6 +12,8 @@ import WarblerCatalog
 import WarblerIdentity
 import WarblerSubscriptions
 
+// NOTE: This helper is duplicated in warbler. If extracting to a shared module,
+// move to a SongbirdHummingbird convenience extension.
 private func jsonResponse(_ value: some Encodable, status: HTTPResponse.Status = .ok) throws -> Response {
     let data = try JSONEncoder().encode(value)
     return Response(

@@ -1,6 +1,7 @@
 import Distributed
 import Foundation
 import Hummingbird
+import Logging
 import NIOCore
 import SongbirdDistributed
 import SongbirdHummingbird
@@ -93,6 +94,7 @@ struct WarblerGatewayApp {
         let subscriptionsSocket = ProcessInfo.processInfo.environment["SUBSCRIPTIONS_SOCKET"] ?? "/tmp/songbird/subscriptions.sock"
         let analyticsSocket = ProcessInfo.processInfo.environment["ANALYTICS_SOCKET"] ?? "/tmp/songbird/analytics.sock"
         let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
+        let logger = Logger(label: "warbler.gateway")
 
         // Create actor system and connect to all workers
         let system = SongbirdActorSystem(processName: "gateway")
@@ -278,7 +280,7 @@ struct WarblerGatewayApp {
             configuration: .init(address: .hostname("localhost", port: port))
         )
 
-        print("Warbler Gateway starting on http://localhost:\(port)")
+        logger.info("Warbler Gateway starting on http://localhost:\(port)")
         do {
             try await app.runService()
         } catch {

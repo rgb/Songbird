@@ -1,5 +1,6 @@
 import Distributed
 import Foundation
+import Logging
 import Songbird
 import SongbirdDistributed
 import SongbirdHummingbird
@@ -93,6 +94,7 @@ struct WarblerIdentityWorkerApp {
         let sqlitePath = args[1]
         let duckdbPath = args[2]
         let socketPath = args[3]
+        let logger = Logger(label: "warbler.identity")
 
         // Event type registry
         let registry = EventTypeRegistry()
@@ -142,7 +144,7 @@ struct WarblerIdentityWorkerApp {
             readModel: readModel
         )
 
-        print("Identity worker started on \(socketPath)")
+        logger.info("Identity worker started on \(socketPath)")
 
         // Run services (blocks until cancelled)
         do {

@@ -137,7 +137,7 @@ struct WarblerAnalyticsWorkerApp {
                     playbackInjector: playbackInjector
                 )
 
-                print("Analytics worker (Postgres) started on \(socketPath)")
+                logger.info("Analytics worker (Postgres) started on \(socketPath)")
 
                 // Run services (blocks until cancelled)
                 do {

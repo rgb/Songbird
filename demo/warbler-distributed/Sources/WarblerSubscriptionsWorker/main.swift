@@ -1,5 +1,6 @@
 import Distributed
 import Foundation
+import Logging
 import Songbird
 import SongbirdDistributed
 import SongbirdHummingbird
@@ -74,6 +75,7 @@ struct WarblerSubscriptionsWorkerApp {
         let sqlitePath = args[1]
         let duckdbPath = args[2]
         let socketPath = args[3]
+        let logger = Logger(label: "warbler.subscriptions")
 
         let registry = EventTypeRegistry()
         registry.register(SubscriptionEvent.self, eventTypes: [SubscriptionEventTypes.subscriptionRequested, SubscriptionEventTypes.paymentConfirmed, SubscriptionEventTypes.paymentFailed])
@@ -110,7 +112,7 @@ struct WarblerSubscriptionsWorkerApp {
             readModel: readModel
         )
 
-        print("Subscriptions worker started on \(socketPath)")
+        logger.info("Subscriptions worker started on \(socketPath)")
 
         // Run services (blocks until cancelled)
         do {

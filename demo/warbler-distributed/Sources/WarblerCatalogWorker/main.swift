@@ -1,5 +1,6 @@
 import Distributed
 import Foundation
+import Logging
 import Songbird
 import SongbirdDistributed
 import SongbirdHummingbird
@@ -110,6 +111,7 @@ struct WarblerCatalogWorkerApp {
         let sqlitePath = args[1]
         let duckdbPath = args[2]
         let socketPath = args[3]
+        let logger = Logger(label: "warbler.catalog")
 
         // Event type registry (with versioning upcast)
         let registry = EventTypeRegistry()
@@ -154,7 +156,7 @@ struct WarblerCatalogWorkerApp {
             readModel: readModel
         )
 
-        print("Catalog worker started on \(socketPath)")
+        logger.info("Catalog worker started on \(socketPath)")
 
         // Run services (blocks until cancelled)
         do {

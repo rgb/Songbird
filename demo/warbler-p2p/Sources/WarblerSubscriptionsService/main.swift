@@ -15,6 +15,7 @@ struct WarblerSubscriptionsService {
         let sqlitePath = ProcessInfo.processInfo.environment["SQLITE_PATH"] ?? "data/songbird.sqlite"
         let duckdbPath = ProcessInfo.processInfo.environment["DUCKDB_PATH"] ?? "data/subscriptions.duckdb"
         let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8083") ?? 8083
+        let bindHost = ProcessInfo.processInfo.environment["BIND_HOST"] ?? "localhost"
 
         // MARK: - Event Type Registry
 
@@ -102,10 +103,10 @@ struct WarblerSubscriptionsService {
 
         let app = Application(
             router: router,
-            configuration: .init(address: .hostname("localhost", port: port))
+            configuration: .init(address: .hostname(bindHost, port: port))
         )
 
-        print("WarblerSubscriptionsService starting on http://localhost:\(port)")
+        print("WarblerSubscriptionsService starting on http://\(bindHost):\(port)")
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask { try await services.run() }

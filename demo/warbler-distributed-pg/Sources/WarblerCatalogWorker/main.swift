@@ -176,7 +176,7 @@ struct WarblerCatalogWorkerApp {
                     readModel: readModel
                 )
 
-                print("Catalog worker (Postgres) started on \(socketPath)")
+                logger.info("Catalog worker (Postgres) started on \(socketPath)")
 
                 // Run services (blocks until cancelled)
                 do {
