@@ -76,8 +76,8 @@ struct WarblerSubscriptionsWorkerApp {
         let socketPath = args[3]
 
         let registry = EventTypeRegistry()
-        registry.register(SubscriptionEvent.self, eventTypes: ["SubscriptionRequested", "PaymentConfirmed", "PaymentFailed"])
-        registry.register(SubscriptionLifecycleEvent.self, eventTypes: ["AccessGranted", "SubscriptionCancelled"])
+        registry.register(SubscriptionEvent.self, eventTypes: [SubscriptionEventTypes.subscriptionRequested, SubscriptionEventTypes.paymentConfirmed, SubscriptionEventTypes.paymentFailed])
+        registry.register(SubscriptionLifecycleEvent.self, eventTypes: [LifecycleEventTypes.accessGranted, LifecycleEventTypes.subscriptionCancelled])
 
         let eventStore = try SQLiteEventStore(path: sqlitePath)
         let readModel = try ReadModelStore(path: duckdbPath)

@@ -4,23 +4,27 @@ public actor EmailNotificationGateway: Gateway {
     public let gatewayId = "EmailNotification"
     public static let categories = ["subscriptionLifecycle"]
 
+    public struct Notification: Sendable, Equatable {
+        public let type: String
+        public let userId: String
+    }
+
     /// Tracks notifications sent (for testing and logging).
-    public private(set) var sentNotifications: [(type: String, userId: String)] = []
+    public private(set) var sentNotifications: [Notification] = []
 
     public init() {}
 
     public func handle(_ event: RecordedEvent) async throws {
         switch event.eventType {
-        case "AccessGranted":
+        case LifecycleEventTypes.accessGranted:
             let envelope = try event.decode(SubscriptionLifecycleEvent.self)
             guard case .accessGranted(let userId) = envelope.event else { return }
-            sentNotifications.append((type: "welcome", userId: userId))
+            sentNotifications.append(Notification(type: "welcome", userId: userId))
 
-        case "SubscriptionCancelled":
+        case LifecycleEventTypes.subscriptionCancelled:
             let envelope = try event.decode(SubscriptionLifecycleEvent.self)
-            guard case .subscriptionCancelled = envelope.event else { return }
-            let subId = event.streamName.id ?? "unknown"
-            sentNotifications.append((type: "cancellation", userId: subId))
+            guard case .subscriptionCancelled(let userId, _) = envelope.event else { return }
+            sentNotifications.append(Notification(type: "cancellation", userId: userId))
 
         default:
             break

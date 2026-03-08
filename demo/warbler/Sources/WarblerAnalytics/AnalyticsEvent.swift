@@ -5,7 +5,7 @@ public enum AnalyticsEvent: Event {
 
     public var eventType: String {
         switch self {
-        case .videoViewed: "VideoViewed"
+        case .videoViewed: AnalyticsEventTypes.videoViewed
         }
     }
 }

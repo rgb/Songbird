@@ -34,7 +34,7 @@ enum OnSubscriptionRequested: EventReaction {
     typealias PMState = SubscriptionLifecycleProcess.State
     typealias Input = SubscriptionEvent
 
-    static let eventTypes = ["SubscriptionRequested"]
+    static let eventTypes = [SubscriptionEventTypes.subscriptionRequested]
 
     static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
@@ -59,7 +59,7 @@ enum OnPaymentConfirmed: EventReaction {
     typealias PMState = SubscriptionLifecycleProcess.State
     typealias Input = SubscriptionEvent
 
-    static let eventTypes = ["PaymentConfirmed"]
+    static let eventTypes = [SubscriptionEventTypes.paymentConfirmed]
 
     static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
@@ -69,13 +69,14 @@ enum OnPaymentConfirmed: EventReaction {
     }
 
     static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
+        guard state.status == .paymentPending else { return state }
         var s = state
         s.status = .active
         return s
     }
 
     static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
-        guard let userId = state.userId else { return [] }
+        guard state.status == .active, let userId = state.userId else { return [] }
         return [SubscriptionLifecycleEvent.accessGranted(userId: userId)]
     }
 }
@@ -84,7 +85,7 @@ enum OnPaymentFailed: EventReaction {
     typealias PMState = SubscriptionLifecycleProcess.State
     typealias Input = SubscriptionEvent
 
-    static let eventTypes = ["PaymentFailed"]
+    static let eventTypes = [SubscriptionEventTypes.paymentFailed]
 
     static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
@@ -94,13 +95,14 @@ enum OnPaymentFailed: EventReaction {
     }
 
     static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
+        guard state.status == .paymentPending else { return state }
         var s = state
         s.status = .cancelled
         return s
     }
 
     static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
-        guard case .paymentFailed(_, let reason) = event else { return [] }
-        return [SubscriptionLifecycleEvent.subscriptionCancelled(reason: reason)]
+        guard state.status == .cancelled, case .paymentFailed(_, let reason) = event, let userId = state.userId else { return [] }
+        return [SubscriptionLifecycleEvent.subscriptionCancelled(userId: userId, reason: reason)]
     }
 }

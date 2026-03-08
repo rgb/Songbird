@@ -32,7 +32,7 @@ public actor PlaybackAnalyticsProjector: Projector {
 
     public func apply(_ event: RecordedEvent) async throws {
         switch event.eventType {
-        case "VideoViewed":
+        case AnalyticsEventTypes.videoViewed:
             let envelope = try event.decode(AnalyticsEvent.self)
             guard case .videoViewed(let videoId, let userId, let watchedSeconds) = envelope.event else { return }
             try await readModel.withConnection { conn in

@@ -57,12 +57,12 @@ struct WarblerApp {
         )
 
         // Subscription events
-        registry.register(SubscriptionEvent.self, eventTypes: ["SubscriptionRequested", "PaymentConfirmed", "PaymentFailed"])
-        registry.register(SubscriptionLifecycleEvent.self, eventTypes: ["AccessGranted", "SubscriptionCancelled"])
+        registry.register(SubscriptionEvent.self, eventTypes: [SubscriptionEventTypes.subscriptionRequested, SubscriptionEventTypes.paymentConfirmed, SubscriptionEventTypes.paymentFailed])
+        registry.register(SubscriptionLifecycleEvent.self, eventTypes: [LifecycleEventTypes.accessGranted, LifecycleEventTypes.subscriptionCancelled])
 
         // Analytics events
-        registry.register(AnalyticsEvent.self, eventTypes: ["VideoViewed"])
-        registry.register(ViewCountEvent.self, eventTypes: ["ViewCounted"])
+        registry.register(AnalyticsEvent.self, eventTypes: [AnalyticsEventTypes.videoViewed])
+        registry.register(ViewCountEvent.self, eventTypes: [ViewCountEventTypes.viewCounted])
 
         // MARK: - Stores (Postgres-backed)
 

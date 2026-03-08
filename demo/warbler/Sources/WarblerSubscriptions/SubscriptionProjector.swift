@@ -3,6 +3,7 @@ import SongbirdSmew
 
 public actor SubscriptionProjector: Projector {
     public let projectorId = "Subscriptions"
+    public static let tableName = "subscriptions"
     private let readModel: ReadModelStore
 
     public init(readModel: ReadModelStore) {
@@ -10,6 +11,7 @@ public actor SubscriptionProjector: Projector {
     }
 
     public func registerMigration() async {
+        await readModel.registerTable(Self.tableName)
         await readModel.registerMigration { conn in
             try conn.execute("""
                 CREATE TABLE subscriptions (
@@ -24,7 +26,7 @@ public actor SubscriptionProjector: Projector {
 
     public func apply(_ event: RecordedEvent) async throws {
         switch event.eventType {
-        case "SubscriptionRequested":
+        case SubscriptionEventTypes.subscriptionRequested:
             let envelope = try event.decode(SubscriptionEvent.self)
             guard case .requested(let subId, let userId, let plan) = envelope.event else { return }
             try await readModel.withConnection { conn in
@@ -33,7 +35,7 @@ public actor SubscriptionProjector: Projector {
                 )
             }
 
-        case "AccessGranted":
+        case LifecycleEventTypes.accessGranted:
             guard let subId = event.streamName.id else { return }
             try await readModel.withConnection { conn in
                 try conn.execute(
@@ -41,7 +43,7 @@ public actor SubscriptionProjector: Projector {
                 )
             }
 
-        case "SubscriptionCancelled":
+        case LifecycleEventTypes.subscriptionCancelled:
             guard let subId = event.streamName.id else { return }
             try await readModel.withConnection { conn in
                 try conn.execute(

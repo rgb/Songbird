@@ -7,9 +7,9 @@ public enum SubscriptionEvent: Event {
 
     public var eventType: String {
         switch self {
-        case .requested: "SubscriptionRequested"
-        case .paymentConfirmed: "PaymentConfirmed"
-        case .paymentFailed: "PaymentFailed"
+        case .requested: SubscriptionEventTypes.subscriptionRequested
+        case .paymentConfirmed: SubscriptionEventTypes.paymentConfirmed
+        case .paymentFailed: SubscriptionEventTypes.paymentFailed
         }
     }
 }

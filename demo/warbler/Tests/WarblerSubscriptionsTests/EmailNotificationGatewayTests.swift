@@ -31,7 +31,7 @@ struct EmailNotificationGatewayTests {
         var harness = TestGatewayHarness(gateway: gateway)
 
         let event = try RecordedEvent(
-            event: SubscriptionLifecycleEvent.subscriptionCancelled(reason: "Payment failed"),
+            event: SubscriptionLifecycleEvent.subscriptionCancelled(userId: "user-1", reason: "Payment failed"),
             streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
         await harness.given(event)
@@ -39,6 +39,7 @@ struct EmailNotificationGatewayTests {
         let notifications = await gateway.sentNotifications
         #expect(notifications.count == 1)
         #expect(notifications[0].type == "cancellation")
+        #expect(notifications[0].userId == "user-1")
     }
 
     @Test func ignoresUnrelatedEvents() async throws {

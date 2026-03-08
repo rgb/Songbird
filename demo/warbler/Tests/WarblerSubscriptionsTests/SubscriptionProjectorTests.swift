@@ -65,7 +65,7 @@ struct SubscriptionProjectorTests {
             streamName: StreamName(category: "subscription", id: "sub-1")
         )
         try await harness.given(
-            SubscriptionLifecycleEvent.subscriptionCancelled(reason: "Payment failed"),
+            SubscriptionLifecycleEvent.subscriptionCancelled(userId: "user-1", reason: "Payment failed"),
             streamName: StreamName(category: "subscriptionLifecycle", id: "sub-1")
         )
 

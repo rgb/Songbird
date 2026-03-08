@@ -3,7 +3,7 @@ import Songbird
 public actor PlaybackInjector: Injector {
     public let injectorId = "Playback"
 
-    nonisolated(unsafe) private let _events: AsyncStream<InboundEvent>
+    private nonisolated let _events: AsyncStream<InboundEvent>
     private let continuation: AsyncStream<InboundEvent>.Continuation
 
     /// Events that were successfully appended, tracked for observability.

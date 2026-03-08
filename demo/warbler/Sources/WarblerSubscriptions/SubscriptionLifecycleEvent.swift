@@ -2,12 +2,12 @@ import Songbird
 
 public enum SubscriptionLifecycleEvent: Event {
     case accessGranted(userId: String)
-    case subscriptionCancelled(reason: String)
+    case subscriptionCancelled(userId: String, reason: String)
 
     public var eventType: String {
         switch self {
-        case .accessGranted: "AccessGranted"
-        case .subscriptionCancelled: "SubscriptionCancelled"
+        case .accessGranted: LifecycleEventTypes.accessGranted
+        case .subscriptionCancelled: LifecycleEventTypes.subscriptionCancelled
         }
     }
 }

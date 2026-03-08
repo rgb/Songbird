@@ -5,7 +5,7 @@ public enum ViewCountEvent: Event {
 
     public var eventType: String {
         switch self {
-        case .viewed: "ViewCounted"
+        case .viewed: ViewCountEventTypes.viewCounted
         }
     }
 }

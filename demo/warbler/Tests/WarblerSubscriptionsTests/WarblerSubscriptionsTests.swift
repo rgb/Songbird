@@ -54,7 +54,7 @@ struct SubscriptionProcessTests {
         #expect(state.status == .cancelled)
         #expect(harness.output.count == 1)
         let output = harness.output[0] as? SubscriptionLifecycleEvent
-        #expect(output == .subscriptionCancelled(reason: "Insufficient funds"))
+        #expect(output == .subscriptionCancelled(userId: "user-1", reason: "Insufficient funds"))
     }
 
     @Test func isolatesPerEntityState() throws {
