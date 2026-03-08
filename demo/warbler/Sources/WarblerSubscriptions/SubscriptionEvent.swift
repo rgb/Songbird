@@ -1,6 +1,6 @@
 import Songbird
 
-public enum SubscriptionEvent: Event {
+public enum SubscriptionEvent: Event, Equatable {
     case requested(subscriptionId: String, userId: String, plan: String)
     case paymentConfirmed(subscriptionId: String)
     case paymentFailed(subscriptionId: String, reason: String)

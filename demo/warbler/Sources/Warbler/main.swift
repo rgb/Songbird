@@ -290,7 +290,7 @@ struct WarblerApp {
                 stream: StreamName(category: "analytics", id: body.videoId),
                 metadata: EventMetadata(traceId: context.requestId)
             )
-            await playbackInjector.inject(inbound)
+            playbackInjector.inject(inbound)
             return Response(status: .accepted)
         }
 

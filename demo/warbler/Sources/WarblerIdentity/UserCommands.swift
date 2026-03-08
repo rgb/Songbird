@@ -1,9 +1,13 @@
 import Songbird
 
 public struct RegisterUser: Command {
-    public var commandType: String { "RegisterUser" }
+    public let commandType = "RegisterUser"
     public let email: String
     public let displayName: String
+
+    private enum CodingKeys: String, CodingKey {
+        case email, displayName
+    }
 
     public init(email: String, displayName: String) {
         self.email = email
@@ -26,8 +30,12 @@ public enum RegisterUserHandler: CommandHandler {
 }
 
 public struct UpdateProfile: Command {
-    public var commandType: String { "UpdateProfile" }
+    public let commandType = "UpdateProfile"
     public let displayName: String
+
+    private enum CodingKeys: String, CodingKey {
+        case displayName
+    }
 
     public init(displayName: String) {
         self.displayName = displayName
@@ -49,7 +57,9 @@ public enum UpdateProfileHandler: CommandHandler {
 }
 
 public struct DeactivateUser: Command {
-    public var commandType: String { "DeactivateUser" }
+    public let commandType = "DeactivateUser"
+
+    private enum CodingKeys: CodingKey {}
 
     public init() {}
 }

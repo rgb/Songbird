@@ -4,7 +4,7 @@ public actor PlaybackInjector: Injector {
     public let injectorId = "Playback"
 
     private nonisolated let _events: AsyncStream<InboundEvent>
-    private let continuation: AsyncStream<InboundEvent>.Continuation
+    private nonisolated let continuation: AsyncStream<InboundEvent>.Continuation
 
     /// Events that were successfully appended, tracked for observability.
     public private(set) var appendedCount: Int = 0
@@ -29,7 +29,7 @@ public actor PlaybackInjector: Injector {
     }
 
     /// Called by the HTTP route to inject a playback event.
-    public func inject(_ event: InboundEvent) {
+    public nonisolated func inject(_ event: InboundEvent) {
         continuation.yield(event)
     }
 }

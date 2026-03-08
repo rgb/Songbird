@@ -9,7 +9,8 @@ public actor EmailNotificationGateway: Gateway {
         public let userId: String
     }
 
-    /// Tracks notifications sent (for testing and logging).
+    /// Tracks sent notifications for testing and observability.
+    /// In production, replace with metrics emission or a bounded ring buffer.
     public private(set) var sentNotifications: [Notification] = []
 
     public init() {}

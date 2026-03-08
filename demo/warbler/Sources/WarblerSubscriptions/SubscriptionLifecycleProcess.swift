@@ -30,20 +30,20 @@ public enum SubscriptionLifecycleProcess: ProcessManager {
     ]
 }
 
-enum OnSubscriptionRequested: EventReaction {
-    typealias PMState = SubscriptionLifecycleProcess.State
-    typealias Input = SubscriptionEvent
+public enum OnSubscriptionRequested: EventReaction {
+    public typealias PMState = SubscriptionLifecycleProcess.State
+    public typealias Input = SubscriptionEvent
 
-    static let eventTypes = [SubscriptionEventTypes.subscriptionRequested]
+    public static let eventTypes = [SubscriptionEventTypes.subscriptionRequested]
 
-    static func route(_ event: SubscriptionEvent) -> String? {
+    public static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
         case .requested(let subId, _, _): subId
         default: nil
         }
     }
 
-    static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
+    public static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
         guard case .requested(_, let userId, let plan) = event else { return state }
         var s = state
         s.status = .paymentPending
@@ -55,53 +55,53 @@ enum OnSubscriptionRequested: EventReaction {
     // No output on request — waiting for payment
 }
 
-enum OnPaymentConfirmed: EventReaction {
-    typealias PMState = SubscriptionLifecycleProcess.State
-    typealias Input = SubscriptionEvent
+public enum OnPaymentConfirmed: EventReaction {
+    public typealias PMState = SubscriptionLifecycleProcess.State
+    public typealias Input = SubscriptionEvent
 
-    static let eventTypes = [SubscriptionEventTypes.paymentConfirmed]
+    public static let eventTypes = [SubscriptionEventTypes.paymentConfirmed]
 
-    static func route(_ event: SubscriptionEvent) -> String? {
+    public static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
         case .paymentConfirmed(let subId): subId
         default: nil
         }
     }
 
-    static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
+    public static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
         guard state.status == .paymentPending else { return state }
         var s = state
         s.status = .active
         return s
     }
 
-    static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
+    public static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
         guard state.status == .active, let userId = state.userId else { return [] }
         return [SubscriptionLifecycleEvent.accessGranted(userId: userId)]
     }
 }
 
-enum OnPaymentFailed: EventReaction {
-    typealias PMState = SubscriptionLifecycleProcess.State
-    typealias Input = SubscriptionEvent
+public enum OnPaymentFailed: EventReaction {
+    public typealias PMState = SubscriptionLifecycleProcess.State
+    public typealias Input = SubscriptionEvent
 
-    static let eventTypes = [SubscriptionEventTypes.paymentFailed]
+    public static let eventTypes = [SubscriptionEventTypes.paymentFailed]
 
-    static func route(_ event: SubscriptionEvent) -> String? {
+    public static func route(_ event: SubscriptionEvent) -> String? {
         switch event {
         case .paymentFailed(let subId, _): subId
         default: nil
         }
     }
 
-    static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
+    public static func apply(_ state: PMState, _ event: SubscriptionEvent) -> PMState {
         guard state.status == .paymentPending else { return state }
         var s = state
         s.status = .cancelled
         return s
     }
 
-    static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
+    public static func react(_ state: PMState, _ event: SubscriptionEvent) -> [any Event] {
         guard state.status == .cancelled, case .paymentFailed(_, let reason) = event, let userId = state.userId else { return [] }
         return [SubscriptionLifecycleEvent.subscriptionCancelled(userId: userId, reason: reason)]
     }

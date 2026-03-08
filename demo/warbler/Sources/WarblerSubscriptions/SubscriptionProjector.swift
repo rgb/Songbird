@@ -1,6 +1,8 @@
 import Songbird
 import SongbirdSmew
 
+// This projector handles events from both "subscription" and "subscriptionLifecycle" categories.
+// The ProjectionPipeline delivers all events from the event store, so both categories are covered.
 public actor SubscriptionProjector: Projector {
     public let projectorId = "Subscriptions"
     public static let tableName = "subscriptions"

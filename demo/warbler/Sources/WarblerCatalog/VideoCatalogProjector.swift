@@ -32,15 +32,17 @@ public actor VideoCatalogProjector: Projector {
             guard case .published(let title, let description, let creatorId) = envelope.event else { return }
             try await readModel.withConnection { conn in
                 try conn.execute(
-                    "INSERT INTO videos (id, title, description, creator_id, status) VALUES (\(param: videoId), \(param: title), \(param: description), \(param: creatorId), \(param: "transcoding"))"
+                    "INSERT INTO videos (id, title, description, creator_id, status) VALUES (\(param: videoId), \(param: title), \(param: description), \(param: creatorId), \(param: VideoStatus.transcoding.rawValue))"
                 )
             }
 
+        // NOTE: RecordedEvent.decode() does not go through the EventTypeRegistry upcast chain,
+        // so this projector must handle v1 events manually. Keep in sync with VideoPublishedUpcast.
         case CatalogEventTypes.videoPublishedV1:
             let envelope = try event.decode(VideoPublishedV1.self)
             try await readModel.withConnection { conn in
                 try conn.execute(
-                    "INSERT INTO videos (id, title, description, creator_id, status) VALUES (\(param: videoId), \(param: envelope.event.title), \(param: ""), \(param: envelope.event.creatorId), \(param: "transcoding"))"
+                    "INSERT INTO videos (id, title, description, creator_id, status) VALUES (\(param: videoId), \(param: envelope.event.title), \(param: ""), \(param: envelope.event.creatorId), \(param: VideoStatus.transcoding.rawValue))"
                 )
             }
 
@@ -56,14 +58,14 @@ public actor VideoCatalogProjector: Projector {
         case CatalogEventTypes.videoTranscodingCompleted:
             try await readModel.withConnection { conn in
                 try conn.execute(
-                    "UPDATE videos SET status = \(param: "published") WHERE id = \(param: videoId)"
+                    "UPDATE videos SET status = \(param: VideoStatus.published.rawValue) WHERE id = \(param: videoId)"
                 )
             }
 
         case CatalogEventTypes.videoUnpublished:
             try await readModel.withConnection { conn in
                 try conn.execute(
-                    "UPDATE videos SET status = \(param: "unpublished") WHERE id = \(param: videoId)"
+                    "UPDATE videos SET status = \(param: VideoStatus.unpublished.rawValue) WHERE id = \(param: videoId)"
                 )
             }
 

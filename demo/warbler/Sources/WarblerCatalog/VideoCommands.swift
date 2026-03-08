@@ -1,10 +1,14 @@
 import Songbird
 
 public struct PublishVideo: Command {
-    public var commandType: String { "PublishVideo" }
+    public let commandType = "PublishVideo"
     public let title: String
     public let description: String
     public let creatorId: String
+
+    private enum CodingKeys: String, CodingKey {
+        case title, description, creatorId
+    }
 
     public init(title: String, description: String, creatorId: String) {
         self.title = title
@@ -29,9 +33,13 @@ public enum PublishVideoHandler: CommandHandler {
 }
 
 public struct UpdateVideoMetadata: Command {
-    public var commandType: String { "UpdateVideoMetadata" }
+    public let commandType = "UpdateVideoMetadata"
     public let title: String
     public let description: String
+
+    private enum CodingKeys: String, CodingKey {
+        case title, description
+    }
 
     public init(title: String, description: String) {
         self.title = title
@@ -56,7 +64,9 @@ public enum UpdateVideoMetadataHandler: CommandHandler {
 }
 
 public struct CompleteTranscoding: Command {
-    public var commandType: String { "CompleteTranscoding" }
+    public let commandType = "CompleteTranscoding"
+
+    private enum CodingKeys: CodingKey {}
 
     public init() {}
 }
@@ -75,7 +85,9 @@ public enum CompleteTranscodingHandler: CommandHandler {
 }
 
 public struct UnpublishVideo: Command {
-    public var commandType: String { "UnpublishVideo" }
+    public let commandType = "UnpublishVideo"
+
+    private enum CodingKeys: CodingKey {}
 
     public init() {}
 }

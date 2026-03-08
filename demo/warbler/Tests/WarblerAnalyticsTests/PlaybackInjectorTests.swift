@@ -17,7 +17,7 @@ struct PlaybackInjectorTests {
             metadata: EventMetadata(traceId: "test")
         )
 
-        await injector.inject(inbound)
+        injector.inject(inbound)
 
         // Read one event from the async stream
         var iterator = injector.events().makeAsyncIterator()

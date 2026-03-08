@@ -1,6 +1,6 @@
 import Songbird
 
-public enum SubscriptionLifecycleEvent: Event {
+public enum SubscriptionLifecycleEvent: Event, Equatable {
     case accessGranted(userId: String)
     case subscriptionCancelled(userId: String, reason: String)
 

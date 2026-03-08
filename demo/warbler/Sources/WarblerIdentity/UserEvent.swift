@@ -1,6 +1,6 @@
 import Songbird
 
-public enum UserEvent: Event {
+public enum UserEvent: Event, Equatable {
     case registered(email: String, displayName: String)
     case profileUpdated(displayName: String)
     case deactivated

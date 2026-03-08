@@ -1,6 +1,6 @@
 import Songbird
 
-public enum AnalyticsEvent: Event {
+public enum AnalyticsEvent: Event, Equatable {
     case videoViewed(videoId: String, userId: String, watchedSeconds: Int)
 
     public var eventType: String {

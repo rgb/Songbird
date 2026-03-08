@@ -1,6 +1,6 @@
 import Songbird
 
-public enum VideoEvent: Event {
+public enum VideoEvent: Event, Equatable {
     case published(title: String, description: String, creatorId: String)
     case metadataUpdated(title: String, description: String)
     case transcodingCompleted
