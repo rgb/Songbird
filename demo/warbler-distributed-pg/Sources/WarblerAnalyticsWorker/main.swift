@@ -136,7 +136,6 @@ struct WarblerAnalyticsWorkerApp {
                     readModel: readModel,
                     playbackInjector: playbackInjector
                 )
-                _ = handler
 
                 print("Analytics worker (Postgres) started on \(socketPath)")
 
@@ -144,10 +143,12 @@ struct WarblerAnalyticsWorkerApp {
                 do {
                     try await services.run()
                 } catch {
+                    _ = handler  // ensure handler stays alive through services.run()
                     try? await system.shutdown()
                     throw error
                 }
-                try? await system.shutdown()
+                _ = handler  // ensure handler stays alive through services.run()
+                try await system.shutdown()
             }
             try await group.next()
             group.cancelAll()

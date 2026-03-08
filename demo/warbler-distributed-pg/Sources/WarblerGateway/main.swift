@@ -3,6 +3,7 @@ import Foundation
 import Hummingbird
 import NIOCore
 import SongbirdDistributed
+import SongbirdHummingbird
 
 // MARK: - Remote Actor Proxies
 //
@@ -120,11 +121,12 @@ struct WarblerGatewayApp {
 
         // MARK: - Router
 
-        let router = Router()
+        let router = Router(context: SongbirdRequestContext.self)
+        router.addMiddleware { RequestIdMiddleware() }
 
         // MARK: - Identity Routes
 
-        router.post("/users/{id}") { request, context -> Response in
+        router.post("/users/{id}") { request, context in
             let id = try context.parameters.require("id")
             struct Body: Codable { let email: String; let displayName: String }
             let body = try await request.decode(as: Body.self, context: context)
@@ -132,7 +134,7 @@ struct WarblerGatewayApp {
             return Response(status: .created)
         }
 
-        router.get("/users/{id}") { _, context -> Response in
+        router.get("/users/{id}") { _, context in
             let id = try context.parameters.require("id")
             guard let user = try await identity.getUser(id: id) else {
                 return Response(status: .notFound)
@@ -145,7 +147,7 @@ struct WarblerGatewayApp {
             )
         }
 
-        router.patch("/users/{id}") { request, context -> Response in
+        router.patch("/users/{id}") { request, context in
             let id = try context.parameters.require("id")
             struct Body: Codable { let displayName: String }
             let body = try await request.decode(as: Body.self, context: context)
@@ -153,7 +155,7 @@ struct WarblerGatewayApp {
             return Response(status: .ok)
         }
 
-        router.delete("/users/{id}") { _, context -> Response in
+        router.delete("/users/{id}") { _, context in
             let id = try context.parameters.require("id")
             try await identity.deactivateUser(userId: id)
             return Response(status: .ok)
@@ -161,7 +163,7 @@ struct WarblerGatewayApp {
 
         // MARK: - Catalog Routes
 
-        router.post("/videos/{id}") { request, context -> Response in
+        router.post("/videos/{id}") { request, context in
             let id = try context.parameters.require("id")
             struct Body: Codable { let title: String; let description: String; let creatorId: String }
             let body = try await request.decode(as: Body.self, context: context)
@@ -169,7 +171,7 @@ struct WarblerGatewayApp {
             return Response(status: .created)
         }
 
-        router.get("/videos") { _, _ -> Response in
+        router.get("/videos") { _, _ in
             let videos = try await catalog.listVideos()
             let data = try JSONEncoder().encode(videos)
             return Response(
@@ -179,7 +181,7 @@ struct WarblerGatewayApp {
             )
         }
 
-        router.get("/videos/{id}") { _, context -> Response in
+        router.get("/videos/{id}") { _, context in
             let id = try context.parameters.require("id")
             guard let video = try await catalog.getVideo(id: id) else {
                 return Response(status: .notFound)
@@ -192,7 +194,7 @@ struct WarblerGatewayApp {
             )
         }
 
-        router.patch("/videos/{id}") { request, context -> Response in
+        router.patch("/videos/{id}") { request, context in
             let id = try context.parameters.require("id")
             struct Body: Codable { let title: String; let description: String }
             let body = try await request.decode(as: Body.self, context: context)
@@ -200,13 +202,13 @@ struct WarblerGatewayApp {
             return Response(status: .ok)
         }
 
-        router.post("/videos/{id}/transcode-complete") { _, context -> Response in
+        router.post("/videos/{id}/transcode-complete") { _, context in
             let id = try context.parameters.require("id")
             try await catalog.completeTranscoding(id: id)
             return Response(status: .ok)
         }
 
-        router.delete("/videos/{id}") { _, context -> Response in
+        router.delete("/videos/{id}") { _, context in
             let id = try context.parameters.require("id")
             try await catalog.unpublishVideo(id: id)
             return Response(status: .ok)
@@ -214,7 +216,7 @@ struct WarblerGatewayApp {
 
         // MARK: - Subscription Routes
 
-        router.post("/subscriptions/{id}") { request, context -> Response in
+        router.post("/subscriptions/{id}") { request, context in
             let id = try context.parameters.require("id")
             struct Body: Codable { let userId: String; let plan: String }
             let body = try await request.decode(as: Body.self, context: context)
@@ -222,7 +224,7 @@ struct WarblerGatewayApp {
             return Response(status: .created)
         }
 
-        router.get("/subscriptions/{userId}") { _, context -> Response in
+        router.get("/subscriptions/{userId}") { _, context in
             let userId = try context.parameters.require("userId")
             let subs = try await subscriptions.getSubscriptions(userId: userId)
             let data = try JSONEncoder().encode(subs)
@@ -233,7 +235,7 @@ struct WarblerGatewayApp {
             )
         }
 
-        router.post("/subscriptions/{id}/pay") { _, context -> Response in
+        router.post("/subscriptions/{id}/pay") { _, context in
             let id = try context.parameters.require("id")
             try await subscriptions.confirmPayment(subscriptionId: id)
             return Response(status: .ok)
@@ -241,14 +243,14 @@ struct WarblerGatewayApp {
 
         // MARK: - Analytics Routes
 
-        router.post("/analytics/views") { request, context -> Response in
+        router.post("/analytics/views") { request, context in
             struct Body: Codable { let videoId: String; let userId: String; let watchedSeconds: Int }
             let body = try await request.decode(as: Body.self, context: context)
             try await analytics.recordView(videoId: body.videoId, userId: body.userId, watchedSeconds: body.watchedSeconds)
             return Response(status: .accepted)
         }
 
-        router.get("/analytics/videos/{id}/views") { _, context -> Response in
+        router.get("/analytics/videos/{id}/views") { _, context in
             let id = try context.parameters.require("id")
             let result = try await analytics.getVideoViews(videoId: id)
             let data = try JSONEncoder().encode(result)
@@ -259,7 +261,7 @@ struct WarblerGatewayApp {
             )
         }
 
-        router.get("/analytics/top-videos") { _, _ -> Response in
+        router.get("/analytics/top-videos") { _, _ in
             let top = try await analytics.getTopVideos()
             let data = try JSONEncoder().encode(top)
             return Response(
@@ -283,6 +285,6 @@ struct WarblerGatewayApp {
             try? await system.shutdown()
             throw error
         }
-        try? await system.shutdown()
+        try await system.shutdown()
     }
 }

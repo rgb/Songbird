@@ -153,15 +153,18 @@ struct WarblerCatalogWorkerApp {
             repository: repository,
             readModel: readModel
         )
-        _ = handler
 
         print("Catalog worker started on \(socketPath)")
+
+        // Run services (blocks until cancelled)
         do {
             try await services.run()
         } catch {
+            _ = handler  // ensure handler stays alive through services.run()
             try? await system.shutdown()
             throw error
         }
-        try? await system.shutdown()
+        _ = handler  // ensure handler stays alive through services.run()
+        try await system.shutdown()
     }
 }

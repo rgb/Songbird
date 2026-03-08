@@ -158,7 +158,6 @@ struct WarblerIdentityWorkerApp {
                     repository: repository,
                     readModel: readModel
                 )
-                _ = handler  // Keep alive
 
                 print("Identity worker (Postgres) started on \(socketPath)")
 
@@ -166,10 +165,12 @@ struct WarblerIdentityWorkerApp {
                 do {
                     try await services.run()
                 } catch {
+                    _ = handler  // ensure handler stays alive through services.run()
                     try? await system.shutdown()
                     throw error
                 }
-                try? await system.shutdown()
+                _ = handler  // ensure handler stays alive through services.run()
+                try await system.shutdown()
             }
             try await group.next()
             group.cancelAll()

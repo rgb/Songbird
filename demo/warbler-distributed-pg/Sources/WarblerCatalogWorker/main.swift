@@ -175,7 +175,6 @@ struct WarblerCatalogWorkerApp {
                     repository: repository,
                     readModel: readModel
                 )
-                _ = handler
 
                 print("Catalog worker (Postgres) started on \(socketPath)")
 
@@ -183,10 +182,12 @@ struct WarblerCatalogWorkerApp {
                 do {
                     try await services.run()
                 } catch {
+                    _ = handler  // ensure handler stays alive through services.run()
                     try? await system.shutdown()
                     throw error
                 }
-                try? await system.shutdown()
+                _ = handler  // ensure handler stays alive through services.run()
+                try await system.shutdown()
             }
             try await group.next()
             group.cancelAll()
