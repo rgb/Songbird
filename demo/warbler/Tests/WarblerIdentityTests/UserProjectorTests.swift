@@ -1,3 +1,4 @@
+import Foundation
 import Songbird
 import SongbirdSmew
 import SongbirdTesting
@@ -72,6 +73,27 @@ struct UserProjectorTests {
             UserEvent.registered(email: "x", displayName: "x"),
             streamName: StreamName(category: "user")
         )
+
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM users").scalarInt64()
+        }
+        #expect(count == 0)
+    }
+
+    @Test func ignoresUnknownEventType() async throws {
+        let (readModel, projector, _) = try await makeProjector()
+
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "user", id: "user-1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "SomeUnknownEvent",
+            data: Data("{}".utf8),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        try await projector.apply(recorded)
 
         let count = try await readModel.withConnection { conn in
             try conn.query("SELECT COUNT(*) FROM users").scalarInt64()

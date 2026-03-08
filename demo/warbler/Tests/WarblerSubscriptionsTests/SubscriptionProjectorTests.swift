@@ -1,3 +1,4 @@
+import Foundation
 import Songbird
 import SongbirdSmew
 import SongbirdTesting
@@ -73,5 +74,26 @@ struct SubscriptionProjectorTests {
             "SELECT id, user_id, plan, status FROM subscriptions WHERE id = \(param: "sub-1")"
         }
         #expect(sub?.status == "cancelled")
+    }
+
+    @Test func ignoresUnknownEventType() async throws {
+        let (readModel, projector, _) = try await makeProjector()
+
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "subscription", id: "sub-1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "SomeUnknownEvent",
+            data: Data("{}".utf8),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        try await projector.apply(recorded)
+
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM subscriptions").scalarInt64()
+        }
+        #expect(count == 0)
     }
 }

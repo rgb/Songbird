@@ -71,6 +71,52 @@ struct VideoAggregateTests {
         }
     }
 
+    @Test func rejectMetadataUpdateWhenInitial() {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        #expect(throws: VideoAggregate.Failure.notPublished) {
+            try harness.when(
+                UpdateVideoMetadata(title: "T", description: "D"),
+                using: UpdateVideoMetadataHandler.self
+            )
+        }
+    }
+
+    @Test func rejectMetadataUpdateWhenUnpublished() {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        harness.given(.published(title: "T", description: "D", creatorId: "c"))
+        harness.given(.transcodingCompleted)
+        harness.given(.unpublished)
+        #expect(throws: VideoAggregate.Failure.videoUnpublished) {
+            try harness.when(
+                UpdateVideoMetadata(title: "New", description: "Desc"),
+                using: UpdateVideoMetadataHandler.self
+            )
+        }
+    }
+
+    @Test func rejectDoubleUnpublish() {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        harness.given(.published(title: "T", description: "D", creatorId: "c"))
+        harness.given(.transcodingCompleted)
+        harness.given(.unpublished)
+        #expect(throws: VideoAggregate.Failure.videoUnpublished) {
+            try harness.when(UnpublishVideo(), using: UnpublishVideoHandler.self)
+        }
+    }
+
+    @Test func updateMetadataWhenPublished() throws {
+        var harness = TestAggregateHarness<VideoAggregate>()
+        harness.given(.published(title: "T", description: "D", creatorId: "c"))
+        harness.given(.transcodingCompleted)
+        let events = try harness.when(
+            UpdateVideoMetadata(title: "New Title", description: "New Desc"),
+            using: UpdateVideoMetadataHandler.self
+        )
+        #expect(events == [.metadataUpdated(title: "New Title", description: "New Desc")])
+        #expect(harness.state.title == "New Title")
+        #expect(harness.state.status == .published)
+    }
+
     @Test func fullLifecycle() throws {
         var harness = TestAggregateHarness<VideoAggregate>()
         try harness.when(

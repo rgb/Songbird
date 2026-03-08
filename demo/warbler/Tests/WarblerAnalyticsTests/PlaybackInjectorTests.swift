@@ -46,4 +46,20 @@ struct PlaybackInjectorTests {
         let count = await injector.appendedCount
         #expect(count == 2)
     }
+
+    @Test func doesNotCountFailedAppends() async throws {
+        let injector = PlaybackInjector()
+
+        let inbound = InboundEvent(
+            event: AnalyticsEvent.videoViewed(videoId: "v-1", userId: "u-1", watchedSeconds: 30),
+            stream: StreamName(category: "analytics", id: "v-1"),
+            metadata: EventMetadata()
+        )
+
+        struct TestError: Error {}
+        await injector.didAppend(inbound, result: .failure(TestError()))
+
+        let count = await injector.appendedCount
+        #expect(count == 0)
+    }
 }

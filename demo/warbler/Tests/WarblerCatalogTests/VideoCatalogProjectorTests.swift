@@ -1,3 +1,4 @@
+import Foundation
 import Songbird
 import SongbirdSmew
 import SongbirdTesting
@@ -68,5 +69,67 @@ struct VideoCatalogProjectorTests {
             "SELECT id, title, description, creator_id, status FROM videos WHERE id = \(param: "v-1")"
         }
         #expect(video?.status == "unpublished")
+    }
+
+    @Test func ignoresEventsWithoutStreamId() async throws {
+        let (readModel, projector, _) = try await makeProjector()
+
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "video"),
+            position: 0,
+            globalPosition: 0,
+            eventType: CatalogEventTypes.videoPublished,
+            data: try JSONEncoder().encode(VideoEvent.published(title: "T", description: "D", creatorId: "c")),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        try await projector.apply(recorded)
+
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM videos").scalarInt64()
+        }
+        #expect(count == 0)
+    }
+
+    @Test func ignoresUnknownEventType() async throws {
+        let (readModel, projector, _) = try await makeProjector()
+
+        let recorded = RecordedEvent(
+            id: UUID(),
+            streamName: StreamName(category: "video", id: "v-1"),
+            position: 0,
+            globalPosition: 0,
+            eventType: "SomeUnknownEvent",
+            data: Data("{}".utf8),
+            metadata: EventMetadata(),
+            timestamp: Date()
+        )
+        try await projector.apply(recorded)
+
+        let count = try await readModel.withConnection { conn in
+            try conn.query("SELECT COUNT(*) FROM videos").scalarInt64()
+        }
+        #expect(count == 0)
+    }
+
+    @Test func handlesV1VideoPublishedEvent() async throws {
+        let (readModel, _, harness) = try await makeProjector()
+
+        let v1Event = VideoPublishedV1(title: "Old Video", creatorId: "c-1")
+        let recorded = try RecordedEvent(
+            event: v1Event,
+            streamName: StreamName(category: "video", id: "v-1")
+        )
+        try await harness.projector.apply(recorded)
+
+        let video: VideoRow? = try await readModel.queryFirst(VideoRow.self) {
+            "SELECT id, title, description, creator_id, status FROM videos WHERE id = \(param: "v-1")"
+        }
+        #expect(video != nil)
+        #expect(video?.title == "Old Video")
+        #expect(video?.description == "")
+        #expect(video?.creatorId == "c-1")
+        #expect(video?.status == "transcoding")
     }
 }
