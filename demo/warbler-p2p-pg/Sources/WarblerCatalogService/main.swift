@@ -42,12 +42,12 @@ struct WarblerCatalogService {
         // MARK: - Event Type Registry
 
         let registry = EventTypeRegistry()
-        registry.register(VideoEvent.self, eventTypes: ["VideoPublished", "VideoMetadataUpdated", "TranscodingCompleted", "VideoUnpublished"])
+        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
         registry.registerUpcast(
             from: VideoPublishedV1.self,
             to: VideoEvent.self,
             upcast: VideoPublishedUpcast(),
-            oldEventType: "VideoPublished_v1"
+            oldEventType: CatalogEventTypes.videoPublishedV1
         )
 
         // MARK: - Stores (Postgres-backed)

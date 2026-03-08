@@ -27,7 +27,7 @@ public actor VideoCatalogProjector: Projector {
         guard let videoId = event.streamName.id else { return }
 
         switch event.eventType {
-        case "VideoPublished":
+        case CatalogEventTypes.videoPublished:
             let envelope = try event.decode(VideoEvent.self)
             guard case .published(let title, let description, let creatorId) = envelope.event else { return }
             try await readModel.withConnection { conn in
@@ -36,7 +36,15 @@ public actor VideoCatalogProjector: Projector {
                 )
             }
 
-        case "VideoMetadataUpdated":
+        case CatalogEventTypes.videoPublishedV1:
+            let envelope = try event.decode(VideoPublishedV1.self)
+            try await readModel.withConnection { conn in
+                try conn.execute(
+                    "INSERT INTO videos (id, title, description, creator_id, status) VALUES (\(param: videoId), \(param: envelope.event.title), \(param: ""), \(param: envelope.event.creatorId), \(param: "transcoding"))"
+                )
+            }
+
+        case CatalogEventTypes.videoMetadataUpdated:
             let envelope = try event.decode(VideoEvent.self)
             guard case .metadataUpdated(let title, let description) = envelope.event else { return }
             try await readModel.withConnection { conn in
@@ -45,14 +53,14 @@ public actor VideoCatalogProjector: Projector {
                 )
             }
 
-        case "TranscodingCompleted":
+        case CatalogEventTypes.videoTranscodingCompleted:
             try await readModel.withConnection { conn in
                 try conn.execute(
                     "UPDATE videos SET status = \(param: "published") WHERE id = \(param: videoId)"
                 )
             }
 
-        case "VideoUnpublished":
+        case CatalogEventTypes.videoUnpublished:
             try await readModel.withConnection { conn in
                 try conn.execute(
                     "UPDATE videos SET status = \(param: "unpublished") WHERE id = \(param: videoId)"

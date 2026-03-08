@@ -17,12 +17,12 @@ struct VideoEventUpcastTests {
 
     @Test func registryDecodesV1AsV2() throws {
         let registry = EventTypeRegistry()
-        registry.register(VideoEvent.self, eventTypes: ["VideoPublished", "VideoMetadataUpdated", "TranscodingCompleted", "VideoUnpublished"])
+        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
         registry.registerUpcast(
             from: VideoPublishedV1.self,
             to: VideoEvent.self,
             upcast: VideoPublishedUpcast(),
-            oldEventType: "VideoPublished_v1"
+            oldEventType: CatalogEventTypes.videoPublishedV1
         )
 
         // Simulate a stored v1 event
@@ -33,7 +33,7 @@ struct VideoEventUpcastTests {
             streamName: StreamName(category: "video", id: "v-1"),
             position: 0,
             globalPosition: 0,
-            eventType: "VideoPublished_v1",
+            eventType: CatalogEventTypes.videoPublishedV1,
             data: data,
             metadata: EventMetadata(),
             timestamp: Date()
@@ -46,7 +46,7 @@ struct VideoEventUpcastTests {
 
     @Test func registryDecodesV2Directly() throws {
         let registry = EventTypeRegistry()
-        registry.register(VideoEvent.self, eventTypes: ["VideoPublished"])
+        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished])
 
         let v2 = VideoEvent.published(title: "New Video", description: "Great content", creatorId: "c-2")
         let data = try JSONEncoder().encode(v2)
@@ -55,7 +55,7 @@ struct VideoEventUpcastTests {
             streamName: StreamName(category: "video", id: "v-2"),
             position: 0,
             globalPosition: 0,
-            eventType: "VideoPublished",
+            eventType: CatalogEventTypes.videoPublished,
             data: data,
             metadata: EventMetadata(),
             timestamp: Date()

@@ -7,9 +7,9 @@ public enum UserEvent: Event {
 
     public var eventType: String {
         switch self {
-        case .registered: "UserRegistered"
-        case .profileUpdated: "ProfileUpdated"
-        case .deactivated: "UserDeactivated"
+        case .registered: IdentityEventTypes.userRegistered
+        case .profileUpdated: IdentityEventTypes.userProfileUpdated
+        case .deactivated: IdentityEventTypes.userDeactivated
         }
     }
 }

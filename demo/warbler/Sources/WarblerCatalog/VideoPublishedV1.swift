@@ -6,7 +6,7 @@ public struct VideoPublishedV1: Event, Equatable {
     public let title: String
     public let creatorId: String
 
-    public var eventType: String { "VideoPublished_v1" }
+    public var eventType: String { CatalogEventTypes.videoPublishedV1 }
     public static var version: Int { 1 }
 
     public init(title: String, creatorId: String) {

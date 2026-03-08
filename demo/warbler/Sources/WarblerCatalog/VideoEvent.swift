@@ -8,12 +8,14 @@ public enum VideoEvent: Event {
 
     public var eventType: String {
         switch self {
-        case .published: "VideoPublished"
-        case .metadataUpdated: "VideoMetadataUpdated"
-        case .transcodingCompleted: "TranscodingCompleted"
-        case .unpublished: "VideoUnpublished"
+        case .published: CatalogEventTypes.videoPublished
+        case .metadataUpdated: CatalogEventTypes.videoMetadataUpdated
+        case .transcodingCompleted: CatalogEventTypes.videoTranscodingCompleted
+        case .unpublished: CatalogEventTypes.videoUnpublished
         }
     }
 
+    /// Version applies to the entire enum. Only `.published` changed from v1 -> v2
+    /// (adding `description`). Other cases have always been at this version.
     public static var version: Int { 2 }
 }

@@ -120,7 +120,7 @@ struct WarblerIdentityWorkerApp {
 
         // Event type registry
         let registry = EventTypeRegistry()
-        registry.register(UserEvent.self, eventTypes: ["UserRegistered", "ProfileUpdated", "UserDeactivated"])
+        registry.register(UserEvent.self, eventTypes: [IdentityEventTypes.userRegistered, IdentityEventTypes.userProfileUpdated, IdentityEventTypes.userDeactivated])
 
         // Stores (Postgres-backed)
         let eventStore = PostgresEventStore(client: client)

@@ -27,7 +27,7 @@ public actor UserProjector: Projector {
         guard let userId = event.streamName.id else { return }
 
         switch event.eventType {
-        case "UserRegistered":
+        case IdentityEventTypes.userRegistered:
             let envelope = try event.decode(UserEvent.self)
             guard case .registered(let email, let displayName) = envelope.event else { return }
             try await readModel.withConnection { conn in
@@ -36,7 +36,7 @@ public actor UserProjector: Projector {
                 )
             }
 
-        case "ProfileUpdated":
+        case IdentityEventTypes.userProfileUpdated:
             let envelope = try event.decode(UserEvent.self)
             guard case .profileUpdated(let displayName) = envelope.event else { return }
             try await readModel.withConnection { conn in
@@ -45,7 +45,7 @@ public actor UserProjector: Projector {
                 )
             }
 
-        case "UserDeactivated":
+        case IdentityEventTypes.userDeactivated:
             try await readModel.withConnection { conn in
                 try conn.execute(
                     "UPDATE users SET is_active = \(param: false) WHERE id = \(param: userId)"

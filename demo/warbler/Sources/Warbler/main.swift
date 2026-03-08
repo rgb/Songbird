@@ -18,17 +18,17 @@ struct WarblerApp {
         let registry = EventTypeRegistry()
 
         // Identity events
-        registry.register(UserEvent.self, eventTypes: ["UserRegistered", "ProfileUpdated", "UserDeactivated"])
+        registry.register(UserEvent.self, eventTypes: [IdentityEventTypes.userRegistered, IdentityEventTypes.userProfileUpdated, IdentityEventTypes.userDeactivated])
 
         // Catalog events (current version)
-        registry.register(VideoEvent.self, eventTypes: ["VideoPublished", "VideoMetadataUpdated", "TranscodingCompleted", "VideoUnpublished"])
+        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
 
         // Catalog event versioning: v1 → v2 upcast
         registry.registerUpcast(
             from: VideoPublishedV1.self,
             to: VideoEvent.self,
             upcast: VideoPublishedUpcast(),
-            oldEventType: "VideoPublished_v1"
+            oldEventType: CatalogEventTypes.videoPublishedV1
         )
 
         // Subscription events

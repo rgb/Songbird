@@ -22,14 +22,14 @@ struct WarblerCatalogService {
         let registry = EventTypeRegistry()
 
         // Catalog events (current version)
-        registry.register(VideoEvent.self, eventTypes: ["VideoPublished", "VideoMetadataUpdated", "TranscodingCompleted", "VideoUnpublished"])
+        registry.register(VideoEvent.self, eventTypes: [CatalogEventTypes.videoPublished, CatalogEventTypes.videoMetadataUpdated, CatalogEventTypes.videoTranscodingCompleted, CatalogEventTypes.videoUnpublished])
 
         // Catalog event versioning: v1 → v2 upcast
         registry.registerUpcast(
             from: VideoPublishedV1.self,
             to: VideoEvent.self,
             upcast: VideoPublishedUpcast(),
-            oldEventType: "VideoPublished_v1"
+            oldEventType: CatalogEventTypes.videoPublishedV1
         )
 
         // MARK: - Stores
